@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Project Gantt</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  </head>
+
+  <body>
+    <div id="app">
+      <v-app>
+        <v-navigation-drawer
+          v-model="drawer"
+          app
+        >
+          <v-list subheader>
+            <v-list-group
+              prepend-icon="mdi-account"
+              >
+              <template v-slot:activator>
+                <v-list-item-content><v-list-item-title>Jay Doe</v-list-item-title></v-list-item-content>
+              </template>
+
+              <v-list-item link>
+                <v-list-item-content><v-list-item-title>Login</v-list-item-title></v-list-item-content>
+                <v-list-item-action><v-icon>mdi-login</v-icon></v-list-item-action>
+              </v-list-item>
+              <v-list-item link>
+                <v-list-item-content><v-list-item-title>Logout</v-list-item-title></v-list-item-content>
+                <v-list-item-action><v-icon>mdi-logout</v-icon></v-list-item-action>
+              </v-list-item>
+            </v-list-group>
+        
+            <v-divider></v-divider>
+
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-help-circle</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>Help</v-list-item-title></v-list-item-content>
+            </v-list-item>
+
+            <v-divider></v-divider>
+
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-file-plus</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>New</v-list-item-title></v-list-item-content>
+            </v-list-item>
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-folder-open</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>Open</v-list-item-title></v-list-item-content>
+            </v-list-item>
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-content-save</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>Save</v-list-item-title></v-list-item-content>
+            </v-list-item>
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-content-save-settings</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>Save as</v-list-item-title></v-list-item-content>
+            </v-list-item>
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-delete</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>Delete</v-list-item-title></v-list-item-content>
+            </v-list-item>
+
+            <v-divider></v-divider>
+
+            <v-subheader>Gantt charts</v-subheader>
+
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-chart-gantt</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>Gantt chart name</v-list-item-title></v-list-item-content>
+            </v-list-item>
+
+            <v-divider></v-divider>
+
+            <v-subheader>Recent</v-subheader>
+
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-file</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>File 1</v-list-item-title></v-list-item-content>
+            </v-list-item>
+            
+          </v-list>
+        </v-navigation-drawer>
+
+        <v-app-bar app dark color="teal">
+          <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
+          <v-toolbar-title>Project Gantt</v-toolbar-title>
+        </v-app-bar>
+        <v-content>
+          <v-container>
+            <v-flex class="title">File name</v-flex>
+
+            <v-flex><v-col
+              @click="ganttchartnameeditable = true" 
+              @blur="ganttchartnameeditable = false" 
+              :contenteditable="ganttchartnameeditable">Gantt chart name</v-col></v-flex>
+
+            <v-row no-gutters>
+              <v-col cols="1" class="text-center">
+                <v-card outlined tile height="40px">
+                  <v-layout fill-height align-center pa-2>
+                    <v-flex class="text-no-wrap text-truncate">ID</v-flex>
+                  </v-layout>
+                </v-card>
+              </v-col>
+              <v-col cols="3" class="text-center">
+                <v-card outlined tile height="40px">
+                  <v-layout fill-height align-center pa-2>
+                    <v-flex class="text-no-wrap text-truncate">Task</v-flex>
+                  </v-layout>
+                </v-card>
+              </v-col>
+              <v-col class="text-center">
+                <v-card outlined tile height="40px">
+                  <v-layout fill-height align-center pa-2>
+                    <v-flex class="text-no-wrap text-truncate">Date</v-flex>
+                  </v-layout>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-row no-gutters>
+              <v-col cols="4">
+                <v-row no-gutters>
+                  <v-col cols="3" class="text-center">
+                    <v-card outlined tile height="40px">
+                      <v-layout fill-height align-center pa-2>
+                        <v-flex class="text-no-wrap text-truncate">1</v-flex>
+                      </v-layout>
+                    </v-card>
+                  </v-col>
+                  <v-col cols="9" class="text-center">
+                    <v-card outlined tile height="40px">
+                      <v-layout fill-height align-center pa-2>
+                        <v-flex class="text-no-wrap text-truncate">Task 01</v-flex>
+                      </v-layout>
+                    </v-card>
+                  </v-col>
+                </v-row>
+
+
+                <v-row no-gutters>
+                  <v-col cols="3" class="text-center">
+                    <v-card outlined tile height="40px">
+                      <v-layout fill-height align-center pa-2>
+                        <v-flex class="text-no-wrap text-truncate">2</v-flex>
+                      </v-layout>
+                    </v-card>
+                  </v-col>
+                  <v-col cols="9" class="text-center">
+                    <v-card outlined tile height="40px">
+                      <v-layout fill-height align-center pa-2>
+                        <v-flex class="text-no-wrap text-truncate">Task 02</v-flex>
+                      </v-layout>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </v-col>
+
+              <v-col>
+                <v-layout fill-height>
+                  <v-flex><v-card outlined tile height="100%">
+                    <!-- <svg></svg> -->
+                  </v-card></v-flex>
+                </v-layout>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-content>
+
+        <v-footer absolute>
+          <v-col class="text-center" cols=12>
+            Powered by Vue and Vuetify, created by R.ich.ard
+          </v-col>
+        </v-footer>
+      </v-app>
+    </div>
+    
+    <style>
+      .separator { height: 1em; }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+    <script>
+      new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        data: {
+          drawer: false,
+          ganttchartnameeditable: false
+        }
+      })
+    </script>
+  </body>
+</html>
