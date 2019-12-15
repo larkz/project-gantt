@@ -101,7 +101,49 @@
             <v-row no-gutters>
               <v-col cols="3">
                 <v-row no-gutters>
-                  <v-col cols="auto" class="text-center">
+                <v-col cols="auto">
+                  <v-row no-gutters>
+                    <v-col>
+                      <v-card outlined tile height="40px">
+                        <v-layout fill-height align-center pa-2>
+                          <v-flex class="text-no-wrap text-truncate">ID</v-flex>
+                        </v-layout>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                  <v-row no-gutters v-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n">
+                    <v-col>
+                      <v-card outlined tile height="40px">
+                        <v-layout fill-height align-center pa-2>
+                          <v-flex class="text-no-wrap text-truncate">{{ n }}</v-flex>
+                        </v-layout>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-col>
+                <v-col cols="0">
+                  <v-row no-gutters>
+                    <v-col>
+                      <v-card outlined tile height="40px">
+                        <v-layout fill-height align-center pa-2>
+                          <v-flex class="text-no-wrap text-truncate">Task</v-flex>
+                        </v-layout>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                  <v-row no-gutters v-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n">
+                    <v-col>
+                      <v-card outlined tile height="40px">
+                        <v-layout fill-height align-center pa-2>
+                          <v-flex class="text-no-wrap text-truncate">Task {{ n }}</v-flex>
+                        </v-layout>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-col>
+                </v-row>
+                <!-- <v-row no-gutters>
+                  <v-col cols="1" class="text-center">
                     <v-card outlined tile height="40px">
                       <v-layout fill-height align-center pa-2>
                         <v-flex class="text-no-wrap text-truncate">ID</v-flex>
@@ -117,7 +159,7 @@
                   </v-col>
                 </v-row>
                 <v-row no-gutters>
-                  <v-col cols="auto" class="text-center">
+                  <v-col cols="2" class="text-center">
                     <v-card outlined tile height="40px">
                       <v-layout fill-height align-center pa-2>
                         <v-flex class="text-no-wrap text-truncate">1</v-flex>
@@ -133,7 +175,7 @@
                   </v-col>
                 </v-row>
                 <v-row no-gutters>
-                  <v-col cols="auto" class="text-center">
+                  <v-col cols="2" class="text-center">
                     <v-card outlined tile height="40px">
                       <v-layout fill-height align-center pa-2>
                         <v-flex class="text-no-wrap text-truncate">1</v-flex>
@@ -147,7 +189,7 @@
                       </v-layout>
                     </v-card>
                   </v-col>
-                </v-row>
+                </v-row> -->
               </v-col>
 
               <v-col>
@@ -253,12 +295,68 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
     <script>
-      new Vue({
+      class Task {
+        constructor(name, description) {
+          this.name = name;
+          this.description = description;
+          this.id = '';
+          this.time = {
+            planned: [],
+            actual: []
+          },
+          this.predecessors = [],
+          this.successors = [],
+          this.subtasks = []
+        }
+
+        setId(id) {
+          this.id = id;
+        }
+
+        changeName(name) {
+          this.name = name;
+        }
+
+        changeDescription(description) {
+          this.description = description;
+        }
+
+        addPlannedTime(start, end) {
+          this.time.planned.push(start, end);
+        }
+
+        addActualTime(start, end) {
+          this.time.actual.push(start, end);
+        }
+
+        addSuccessor(successor) {
+          this.successors.push(successor);
+        }
+
+        addPredecessor(predecessor) {
+          this.predecessors.push(predecessor);
+        }
+
+        addSubtask(subtask) {
+          this.subtasks.push(subtask);
+        }
+      }
+
+      var vm = new Vue({
         el: '#app',
         vuetify: new Vuetify(),
         data: {
           drawer: false,
-          ganttchartnameeditable: false
+          ganttchartnameeditable: false,
+          tasks: []
+        },
+        mounted: function () {    
+          var task = new Task();
+          task.setId('daskjhdac');
+          task.changeName('Task 1');
+          task.changeDescription('task 1 test');
+          task.addPlannedTime(new Date(2019,0,0), new Date(2019,11,30));
+          this.tasks.push(task);
         }
       })
     </script>
