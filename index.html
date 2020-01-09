@@ -17,20 +17,35 @@
           app
         >
           <v-list subheader>
-            <v-list-group
-              prepend-icon="mdi-account"
-              >
+            <v-list-group>
               <template v-slot:activator>
-                <v-list-item-content><v-list-item-title>Jay Doe</v-list-item-title></v-list-item-content>
+                <template v-if="isSignedIn">
+                  <v-list-item-avatar left>
+                    <v-img v-if="user.imageUrl" :src="user.imageUrl"></v-img>
+                    <v-icon v-else>mdi-account</v-icon>
+                  </v-list-item-avatar>
+                  <v-list-item-content>
+                    <v-list-item-title v-html="user.name" :title="user.name"></v-list-item-title>
+                    <v-list-item-subtitle v-html="user.email" :title="user.email"></v-list-item-subtitle>
+                  </v-list-item-content>
+                </template>
+                <template v-else>
+                  <v-list-item-avatar left><v-icon>mdi-account</v-icon></v-list-item-avatar>
+                  <v-list-item-content><v-list-item-title>Connect to <v-icon>mdi-google-drive</v-icon></v-list-item-title></v-list-item-content>
+                </template>
               </template>
 
-              <v-list-item link>
-                <v-list-item-content><v-list-item-title>Login</v-list-item-title></v-list-item-content>
+              <v-list-item link @click="signInClick" title="log in" v-if="!isSignedIn">
+                <v-list-item-content><v-list-item-title>Log in</v-list-item-title></v-list-item-content>
                 <v-list-item-action><v-icon>mdi-login</v-icon></v-list-item-action>
               </v-list-item>
-              <v-list-item link>
-                <v-list-item-content><v-list-item-title>Logout</v-list-item-title></v-list-item-content>
+              <v-list-item link @click="signOutClick" title="log out" v-if="isSignedIn">
+                <v-list-item-content><v-list-item-title>Log out</v-list-item-title></v-list-item-content>
                 <v-list-item-action><v-icon>mdi-logout</v-icon></v-list-item-action>
+              </v-list-item>
+              <v-list-item link @click="disconnectClick" title="revoke all permissions" v-if="isSignedIn">
+                <v-list-item-content><v-list-item-title>Disconnect app</v-list-item-title></v-list-item-content>
+                <v-list-item-action><v-icon>mdi-exit-run</v-icon></v-list-item-action>
               </v-list-item>
             </v-list-group>
         
@@ -46,31 +61,36 @@
             <v-list-item link>
               <v-list-item-action><v-icon>mdi-file-plus</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>New</v-list-item-title></v-list-item-content>
+              <v-list-item-action @click.stop="newInNew"><v-icon>mdi-open-in-new</v-icon></v-list-item-action>
             </v-list-item>
-            <v-list-item link>
+            <v-list-item link @click="showPicker" v-if="isSignedIn">
               <v-list-item-action><v-icon>mdi-folder-open</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Open</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link>
+            <v-list-item link @click="saveFile" :title="isSignedIn ? '' : 'log in to save'">
               <v-list-item-action><v-icon>mdi-content-save</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link>
+            <v-list-item link v-if="isSignedIn" @click="saveAsDialog = true">
               <v-list-item-action><v-icon>mdi-content-save-settings</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save as</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link>
+            <v-list-item link v-if="isSignedIn">
               <v-list-item-action><v-icon>mdi-delete</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Delete</v-list-item-title></v-list-item-content>
+            </v-list-item>
+            <v-list-item link>
+              <v-list-item-action><v-icon>mdi-printer</v-icon></v-list-item-action>
+              <v-list-item-content><v-list-item-title>Enter print mode</v-list-item-title></v-list-item-content>
             </v-list-item>
 
             <v-divider></v-divider>
 
             <v-subheader>Gantt charts</v-subheader>
 
-            <v-list-item link>
+            <v-list-item link v-for="gc,i in gantts" :key="i">
               <v-list-item-action><v-icon>mdi-chart-gantt</v-icon></v-list-item-action>
-              <v-list-item-content><v-list-item-title>Gantt chart name</v-list-item-title></v-list-item-content>
+              <v-list-item-content><v-list-item-title>{{ gc.ganttChartName }}</v-list-item-title></v-list-item-content>
             </v-list-item>
 
             <v-divider></v-divider>
@@ -85,280 +105,1070 @@
           </v-list>
         </v-navigation-drawer>
 
-        <v-app-bar app dark color="teal">
+        <v-app-bar app dark color="primary">
           <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
           <v-toolbar-title>Project Gantt</v-toolbar-title>
         </v-app-bar>
         <v-content>
           <v-container>
+            
             <v-flex class="title">File name</v-flex>
-
-            <v-flex><v-col
-              @click="ganttchartnameeditable = true" 
-              @blur="ganttchartnameeditable = false" 
-              :contenteditable="ganttchartnameeditable">Gantt chart name</v-col></v-flex>
-
-            <v-row no-gutters>
-              <v-col cols="3">
-                <v-row no-gutters>
-                <v-col cols="auto">
-                  <v-row no-gutters>
-                    <v-col>
-                      <v-card outlined tile height="40px">
-                        <v-layout fill-height align-center pa-2>
-                          <v-flex class="text-no-wrap text-truncate">ID</v-flex>
-                        </v-layout>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                  <v-row no-gutters v-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n">
-                    <v-col>
-                      <v-card outlined tile height="40px">
-                        <v-layout fill-height align-center pa-2>
-                          <v-flex class="text-no-wrap text-truncate">{{ n }}</v-flex>
-                        </v-layout>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </v-col>
-                <v-col cols="0">
-                  <v-row no-gutters>
-                    <v-col>
-                      <v-card outlined tile height="40px">
-                        <v-layout fill-height align-center pa-2>
-                          <v-flex class="text-no-wrap text-truncate">Task</v-flex>
-                        </v-layout>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                  <v-row no-gutters v-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n">
-                    <v-col>
-                      <v-card outlined tile height="40px">
-                        <v-layout fill-height align-center pa-2>
-                          <v-flex class="text-no-wrap text-truncate">Task {{ n }}</v-flex>
-                        </v-layout>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </v-col>
-                </v-row>
-                <!-- <v-row no-gutters>
-                  <v-col cols="1" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">ID</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="0" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">Task</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                </v-row>
-                <v-row no-gutters>
-                  <v-col cols="2" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">1</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="0" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">Task 01</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                </v-row>
-                <v-row no-gutters>
-                  <v-col cols="2" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">1</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="0" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">Task 01</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                </v-row> -->
-              </v-col>
-
-              <v-col>
-                <v-row no-gutters>
-                  <v-col class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">Date</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                </v-row>
-              </v-col>
-            </v-row>
-
-            <!-- <v-row no-gutters>
-              <v-col cols="1" class="text-center">
-                <v-card outlined tile height="40px">
-                  <v-layout fill-height align-center pa-2>
-                    <v-flex class="text-no-wrap text-truncate">ID</v-flex>
-                  </v-layout>
-                </v-card>
-              </v-col>
-              <v-col cols="3" class="text-center">
-                <v-card outlined tile height="40px">
-                  <v-layout fill-height align-center pa-2>
-                    <v-flex class="text-no-wrap text-truncate">Task</v-flex>
-                  </v-layout>
-                </v-card>
-              </v-col>
-              <v-col class="text-center">
-                <v-card outlined tile height="40px">
-                  <v-layout fill-height align-center pa-2>
-                    <v-flex class="text-no-wrap text-truncate">Date</v-flex>
-                  </v-layout>
-                </v-card>
-              </v-col>
-            </v-row>
+            
+            <gantt-chart v-for="gc,i in gantts" :ref="'gc' + i" :key="i"
+              v-model="gantts[i]"
+            ></gantt-chart>
 
             <v-row no-gutters>
-              <v-col cols="4">
-                <v-row no-gutters>
-                  <v-col cols="3" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">1</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="9" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">Task 01</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                </v-row>
+              <v-col><v-btn tile block depressed style="background-color: white; border: 1px solid #ddd" title="new Gantt chart" @click="addNewGantt"><v-icon>mdi-plus</v-icon></v-btn></v-col>
+            </v-row>
 
-
-                <v-row no-gutters>
-                  <v-col cols="3" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">2</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="9" class="text-center">
-                    <v-card outlined tile height="40px">
-                      <v-layout fill-height align-center pa-2>
-                        <v-flex class="text-no-wrap text-truncate">Task 02</v-flex>
-                      </v-layout>
-                    </v-card>
-                  </v-col>
-                </v-row>
-              </v-col>
-
-              <v-col>
-                <v-layout fill-height>
-                  <v-flex padless>
-                    <svg height="80" style="width: 100%; background-color: white">
-                      <rect x="0" y="10" width="100" height="20" />
-                    </svg>
-                  </v-flex>
-                </v-layout>
-              </v-col>
-            </v-row> -->
           </v-container>
         </v-content>
 
-        <v-footer absolute>
+        <file-dialog v-model="saveAsDialog" title="Save as..."></file-dialog>
+
+        <v-snackbar v-model="showNotice" top>
+          <v-row no-gutters justify="center">
+            <v-col cols="auto">{{ notice }}</v-col>
+          </v-row>
+        </v-snackbar>
+
+        <v-footer>
           <v-col class="text-center" cols=12>
+            <v-btn ref="sdrive" id="sdrive"
+              data-src="//example.com/path/to/myfile.pdf"
+              data-filename="My Statement.pdf"
+              data-sitename="My Company Name"
+            >Drive</v-btn>
             Powered by Vue and Vuetify, created by R.ich.ard
           </v-col>
         </v-footer>
       </v-app>
     </div>
+
+    <template id="gantt-chart">
+      <v-container>
+        <v-row no-gutters class="pt-3 pb-2">
+          <v-col>{{ settings.ganttChartName }}</v-col>
+          <v-col cols="auto">
+            <v-row no-gutters>
+              <v-col><v-btn icon title="toggle edit mode" @click="settings.editMode = !settings.editMode"><v-icon>mdi-pencil</v-icon></v-btn></v-col>
+              <v-col><v-btn icon title="decrease row height" @click="reduceRowHeight"><v-icon>mdi-arrow-collapse-vertical</v-icon></v-btn></v-col>
+              <v-col><v-btn icon title="increase row height" @click="increaseRowHeight"><v-icon>mdi-arrow-expand-vertical</v-icon></v-btn></v-col>
+              <v-col><v-btn icon title="decrease column width" @click="reduceColWidth"><v-icon>mdi-arrow-collapse-horizontal</v-icon></v-btn></v-col>
+              <v-col><v-btn icon title="increase column width" @click="increaseColWidth"><v-icon>mdi-arrow-expand-horizontal</v-icon></v-btn></v-col>
+            </v-row>
+          </v-col>
+          <v-col cols="auto"><gantt-settings v-model="settings"></gantt-settings></v-col>
+        </v-row>
+
+        <v-row no-gutters>
+          <v-col cols="3">
+            <v-row no-gutters>
+              <v-col cols="auto">
+                <v-row no-gutters style="border: 1px solid #ddd; background-color: white" :style="{ height: (40 * (settings.dateDisplay.length + 1)) + 'px' }" justify="center" align="center">
+                  <v-col cols="auto" class="pa-2 text-no-wrap text-truncate">
+                    ID
+                  </v-col>
+                </v-row>
+                <v-row no-gutters>
+                  <v-col cols="0" :style="{ height: (settings.rowHeight * taskToDisplay.length) + 'px' }" class="d-flex flex-column">
+                    <v-row no-gutters v-for="taskId,n in taskToDisplay" :key="n" style="border: 1px solid #ddd; border-top: 0px; background-color: white" justify="center" align="center">
+                      <v-col cols="auto" class="text-no-wrap text-truncate">
+                        {{ getTaskId(taskId) }}
+                      </v-col>
+                    </v-row>
+                  </v-col>
+                </v-row>
+              </v-col>
+              <v-col cols="0">
+                <v-row no-gutters style="border: 1px solid #ddd; border-left: 0px; background-color: white" :style="{ height: (40 * (settings.dateDisplay.length + 1)) + 'px' }" justify="center" align="center">
+                  <v-col cols="auto" class="text-no-wrap text-truncate">
+                    Task
+                  </v-col>
+                </v-row>
+                <v-row no-gutters>
+                  <v-col cols="0" :style="{ height: (settings.rowHeight * taskToDisplay.length) + 'px' }" class="d-flex flex-column">
+                    <task-title no-gutters v-for="taskId,i in taskToDisplay" :key="i" 
+                      style="border: 1px solid #ddd; border-left: 0px; border-top: 0px; background-color: white"
+                      :edit-mode="settings.editMode"
+                      :value="getTaskFromId(taskId)"
+                      @input="setTaskFromId(taskId,$event)"
+                      @remove="removeTaskWithId(taskId)"
+                    >
+                    </task-title>
+                  </v-col>
+                </v-row>
+              </v-col>
+              <v-btn v-if="settings.editMode" depressed tile block 
+                height="40px" 
+                style="border: 1px solid #ddd; border-top: 0px; background-color: white"
+                @click="addNewTask"
+              ><v-icon>mdi-plus</v-icon></v-btn>
+            </v-row>
+          </v-col>
+
+          <v-col style="overflow: auto;">
+            <v-row no-gutters style="height: 40px; border: 1px solid #ddd; border-left: 0px; background-color: white" justify="center" align="center">
+              <v-col cols="auto" class="text-no-wrap text-truncate">
+                Date
+              </v-col>
+            </v-row>
+            <v-row no-gutters>
+              <v-col style="overflow: auto;">
+                <v-row no-gutters class="flex-nowrap" style="height: 40px;" v-for="cl,i in colLabels" v-if="settings.dateDisplay.includes(i)" :style="{ width: (settings.columnWidth * numberOfColumn) + 'px'}" :key="i">
+                  <v-col cols="auto" class="d-flex" v-for="c,j in cl" :key="j" style="border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; background-color: white; min-width: 0;"  :style="{ width: (settings.columnWidth * c.count) + 'px'  }">
+                    <v-row no-gutters justify="center" align="center" style="max-width: 100%" :title="c.value">
+                      <v-col cols="auto" class="text-no-wrap text-truncate" style="min-width: 0;">{{ c.value }}</v-col>
+                    </v-row>
+                  </v-col>
+                </v-row>
+                <v-row no-gutters :style="{ width: (settings.columnWidth * numberOfColumn) + 'px'}">
+                  <v-col cols="0" :style="{ height: (settings.rowHeight * taskToDisplay.length) + 'px' }" class="d-flex flex-column">
+                    <v-row no-gutters class="flex-nowrap" style="position: relative;" v-for="taskId,m in taskToDisplay" :key="m">
+                      <v-col cols="0" class="d-flex" v-for="cl,i in numberOfColumn" :key="i" style="border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; background-color: white">
+                        <v-row no-gutters justify="center" align="center">
+                          <v-col cols="auto"></v-col>
+                        </v-row>
+                      </v-col>
+                      <v-card class="d-flex align-self-center" outlined tile height="80%" :min-width="getBarWidth(taskId, 'planned') + 'px'" style="position:absolute;" :style="{left: getDatePos(taskId, 'planned')+'px', 'background-color': colorList[(taskId[taskId.length-1])%colorList.length]}"></v-card>
+                    </v-row>    
+                  </v-col>
+                </v-row>
+              </v-col>
+            </v-row>
+          </v-col>
+        </v-row>
+      </v-container>
+    </template>
+
+    <template id="gantt-settings">
+      <v-btn icon title="settings" @click="isOpened = !isOpened; updateValue()">
+        <v-icon>mdi-settings</v-icon>
+        <v-dialog v-model="isOpened" max-width="1000px">
+          <v-card>
+            <v-card-title>Settings</v-card-title>
+            <v-card-text>
+              <v-row no-gutters><v-col><v-text-field hide-details v-model="ganttChartName" label="Gantt chart name"></v-text-field></v-col></v-row>
+              <v-row no-gutters justify="center" align="center" class="mt-1">
+                <v-col class="font-weight-black">Edit mode</v-col>
+                <v-col cols="auto"><v-switch inset v-model="editMode"></v-switch></v-col>
+              </v-row>
+              <v-row no-gutters justify="center" align="center" class="mt-1">
+                <v-col class="font-weight-black">Date display</v-col>
+                <v-col cols="auto"><v-btn-toggle v-model="dateDisplay" multiple><v-btn v-for="d in ['year', 'month', 'day']" :key="d">{{ d }}</v-btn></v-btn-toggle></v-col>
+              </v-row>
+              <v-row no-gutters><v-col><v-text-field type="number" hide-details label="Date column width" min="1" suffix="px" prepend-icon="mdi-arrow-expand-horizontal" v-model="columnWidth" class="pb-2"></v-text-field></v-col></v-row>
+              <v-row no-gutters><v-col><v-text-field type="number" hide-details label="Row height" min="1" suffix="px" prepend-icon="mdi-arrow-expand-vertical" v-model="rowHeight" class="pb-2"></v-text-field></v-col></v-row>
+              <v-row no-gutters><v-col class="font-weight-black pt-2">Color Scheme</v-col></v-row>
+              <v-row no-gutters><v-col><v-select hide-details v-model="numberOfClass" :items="[3,4,5,6,7,8,9,'custom']" label="Number of classes" class="pb-2"></v-select></v-col></v-row>
+              <v-row no-gutters class="flex-nowrap" style="overflow:auto" v-if="numberOfClass!='custom'">
+                <v-col v-for="cs in Object.keys(colorbrewer)" :key="cs">
+                  <v-card tile outlined 
+                    class="ma-1" 
+                    width="50px" max-width="50px" 
+                    :title="cs" 
+                    v-if="colorbrewer[cs][numberOfClass]" 
+                    :style="{ 'background-color': cs==selectedScheme ? '#607D8B' : '#ECEFF1' }"
+                    @click="selectedScheme=cs">
+                    <v-card-text>
+                      <v-row v-for="color in colorbrewer[cs][numberOfClass]" :key="cs+color" justify="center">
+                        <v-col cols="10" :style="{ 'background-color': color }"></v-col>
+                      </v-row>
+                    </v-card-text>
+                  </v-card>
+              </v-row>
+              <v-row no-gutters v-else>
+                <v-col cols="12">
+                  <v-col cols="12">
+                    <v-row no-gutters>
+                      <v-col cols="auto" v-for="cs,i in customScheme" :key="i" class="ma-1 pa-1">
+                        <v-card flat height="30px" width="50px" 
+                          :style="{ 'background-color': cs.color }" 
+                          :title="cs.color"
+                        ></v-card>
+                      </v-col>
+                    </v-row>
+                  </v-col>
+                  <v-expansion-panels v-model="customPanel">
+                    <template v-for="cs,i in customScheme">
+                      <v-col cols="12" :key="i">
+                        <v-btn min-width="100%" @click="addNewColor(i)">Add <v-icon>mdi-playlist-plus</v-icon></v-btn>
+                      </v-col>
+                      <v-expansion-panel>
+                        <v-expansion-panel-header>
+                          <v-row no-gutters align="center">
+                            <v-col cols="auto"><v-btn icon @click.stop="customScheme.splice(i,1)"><v-icon>mdi-minus</v-icon></v-btn></v-col>
+                            <v-col cols="auto" class="pr-1">{{ i+1 }}</v-col>
+                            <v-col>
+                              <v-row no-gutters justify="center" align="center">
+                                <v-col cols="8"><v-card flat height="30px" :style="{ 'background-color': cs.color }"></v-card></v-col>
+                              </v-row>
+                            </v-col>
+                          </v-row>
+                        </v-expansion-panel-header>
+                        <v-expansion-panel-content><color-chooser v-model="customScheme[i]" @selected="customPanel = null"></color-chooser></v-expansion-panel-content>
+                      </v-expansion-panel>
+                    </template>
+                    <v-col cols="12" class="mt-2">
+                      <v-btn min-width="100%" @click="addNewColor()">Add <v-icon>mdi-playlist-plus</v-icon></v-btn>
+                    </v-col>
+                  </v-expansion-panels>
+                </v-col>
+              </v-row>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn text @click="isOpened = !isOpened; confirmSettings();">Ok</v-btn>
+              <v-btn text @click="isOpened = !isOpened">Cancel</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+      </v-btn>
+    </template>
     
+    <template id="color-chooser">
+      <v-card>
+        <v-card-text>
+          <v-row>
+            <v-tabs grow v-model="customColorTab">
+              <v-tab>Palette</v-tab>
+              <v-tab>Scheme</v-tab>
+            </v-tabs>
+            <v-tabs-items v-model="customColorTab" style="width:100%">
+              <v-tab-item>
+                <v-card flat>
+                  <v-card-text>
+                    <v-row no-gutters>
+                      <v-col>
+                        <v-slider v-model="minVal" prepend-icon="mdi-palette" min="0" max="200" :label="minVal.toString()" inverse-label></v-slider>
+                      </v-col>
+                    </v-row>
+                    <v-row no-gutters>
+                      <v-col>
+                        <v-slider v-model="totalChoice" prepend-icon="mdi-music-accidental-sharp" min="6" step="6" max="300" :label="totalChoice.toString()" inverse-label></v-text-field>
+                      </v-col>
+                    </v-row>
+                    <v-row no-gutters>
+                      <v-col cols="auto" v-for="cp,i in colorPalette" :key="i" class="ma-1 pa-1" 
+                        :style="{ border: '1px solid', 'border-color': cp == value.color ? '#333' : '#fff'}">
+                        <v-card hover flat height="30px" width="50px" 
+                          :style="{ 'background-color': cp }" 
+                          :title="cp"
+                          @click="selectColor(cp)"
+                        ></v-card>
+                      </v-col>
+                    </v-row>
+                    <v-row no-gutters>
+                      <v-col cols="auto" v-for="gp,i in greyPalette" :key="i" class="ma-1 pa-1" 
+                        :style="{ border: '1px solid', 'border-color': gp == value.color ? '#333' : '#fff'}">
+                        <v-card hover flat height="30px" width="50px" 
+                          :style="{ 'background-color': gp }" 
+                          :title="gp"
+                          @click="selectColor(gp)"
+                        ></v-card>
+                      </v-col>
+                    </v-row>
+                  </v-card-text>
+                </v-card>
+              </v-tab-item>
+              <v-tab-item>
+                <v-card flat>
+                  <v-card-text>
+                    <v-row no-gutters justify="center">
+                      <v-col cols="auto">
+                        <v-row no-gutters v-for="cs in Object.keys(colorbrewer)" :key="cs" v-if="colorbrewer[cs][9]">
+                          <v-col cols="auto" v-for="color in colorbrewer[cs][9]" :key="color" class="ma-1 pa-1" 
+                            :style="{ border: '1px solid', 'border-color': color == value.color ? '#333' : '#fff'}">
+                            <v-card hover flat height="30px" width="50px" 
+                              :style="{ 'background-color': color }" 
+                              :title="color"
+                              @click="selectColor(color)"
+                            ></v-card>
+                          </v-col>
+                        </v-row>
+                      </v-col>
+                    </v-row>
+                  </v-card-text>
+                </v-card>  
+              </v-tab-item>
+            </v-tabs-items>
+          </v-row>
+        </v-card-text>
+      </v-card>
+    </template>
+
+    <template id="task-title">
+      <v-row no-gutters justify="start" align="center" @click="openDetails" style="cursor: pointer">
+        <v-col>
+          <v-row no-gutters align="center">
+            <v-col cols="auto"><v-btn icon small v-if="editMode" @click.stop=""><v-icon>mdi-cursor-move</v-icon></v-btn></v-col>
+            <v-col cols="0" class="pl-1 pr-1 text-no-wrap text-truncate" :title="value.description">
+              <slot v-bind:value="value"><v-icon v-if="value.subtasks.length>0" @click.stop="value.collapsed = !value.collapsed">{{ value.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}</v-icon>{{ value.name }}</slot>
+            </v-col>
+            <v-col cols="auto"><v-btn icon small v-if="editMode" @click.stop="$emit('remove')"><v-icon>mdi-minus</v-icon></v-btn></v-col>
+          </v-row>
+          <v-dialog v-model="isOpened" max-width="1000px">
+            <v-card>
+              <v-card-title>Task description</v-card-title>
+              <v-card-text>
+                <v-row no-gutters class="mb-4"><v-col><v-text-field hide-details v-model="details.name" label="Task name"></v-text-field></v-col></v-row>
+                <v-row no-gutters class="mb-4"><v-col><v-textarea outlined hide-details v-model="details.description" label="Task description"></v-textarea></v-col></v-row>
+                <v-row no-gutters class="mb-4">
+                  <v-col>
+                    <v-menu
+                      ref="planned"
+                      v-model="plannedMenu"
+                      :close-on-content-click="false"
+                      :return-value.sync="details.planned"
+                      transition="scale-transition"
+                      offset-y
+                      min-width="290px"
+                    >
+                      <template v-slot:activator="{ on }">
+                        <v-text-field
+                          hide-details
+                          prepend-icon="mdi-calendar"
+                          v-model="plannedText"
+                          label="Planned date"
+                          readonly
+                          v-on="on"
+                        ></v-text-field>
+                      </template>
+                      <v-date-picker v-model="details.planned" range no-title scrollable>
+                        <v-spacer></v-spacer>
+                        <v-btn text @click="$refs.planned.save(details.planned)">OK</v-btn>
+                        <v-btn text @click="plannedMenu = false">Cancel</v-btn>
+                      </v-date-picker>
+                    </v-menu>
+                  </v-col>
+                </v-row>
+                <v-row no-gutters class="mb-4">
+                  <v-col>
+                    <v-menu
+                      ref="actual"
+                      v-model="actualMenu"
+                      :close-on-content-click="false"
+                      :return-value.sync="details.actual"
+                      transition="scale-transition"
+                      offset-y
+                      min-width="290px"
+                    >
+                      <template v-slot:activator="{ on }">
+                        <v-text-field
+                          hide-details
+                          prepend-icon="mdi-calendar"
+                          v-model="actualText"
+                          label="Actual date"
+                          readonly
+                          v-on="on"
+                        ></v-text-field>
+                      </template>
+                      <v-date-picker v-model="details.actual" range no-title scrollable>
+                        <v-spacer></v-spacer>
+                        <v-btn text @click="$refs.actual.save(details.actual)">OK</v-btn>
+                        <v-btn text @click="actualMenu = false">Cancel</v-btn>
+                      </v-date-picker>
+                    </v-menu>
+                  </v-col>
+                </v-row>
+                <v-row no-gutters><v-col class="font-weight-black">Subtasks</v-col></v-row>
+                <task-title no-gutters v-for="task,i in details.subtasks" :key="i" class="pa-3"
+                  :style="i == details.subtasks.length - 1 ? 'background-color: white' : 'border-bottom: 1px solid #ddd; background-color: white'"
+                  :edit-mode="true"
+                  v-model="details.subtasks[i]"
+                  @remove="removeSubtask(i)"
+                  v-slot:default="props"
+                >
+                  <v-row no-gutters>
+                    <v-col cols="6" class="text-no-wrap text-truncate" :title="props.value.name">{{ props.value.name }}</v-col>
+                    <v-col cols="3" class="text-no-wrap text-truncate" :title="'planned: ' + props.value.planned[0] + ' ~ ' + props.value.planned[1]" class="text-center">{{ props.value.planned[0] + ' ~ ' + props.value.planned[1] }}</v-col>
+                    <v-col cols="3" class="text-no-wrap text-truncate" :title="'actual: ' + props.value.actual[0] + ' ~ ' + props.value.actual[1]" class="text-center">{{ props.value.actual[0] + ' ~ ' + props.value.actual[1] }}</v-col>
+                  </v-row>
+                </task-title>
+                <v-btn depressed tile block @click="addNewSubtask"><v-icon>mdi-plus</v-icon></v-btn>
+              </v-card-text>
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn text @click="isOpened = !isOpened; confirmChanges();">Ok</v-btn>
+                <v-btn text @click="isOpened = !isOpened">Cancel</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
+        </v-col>
+      </v-row>
+    </template>
+
+    <template id="file-dialog">
+      <v-dialog v-model="value" content-class="file-dialog">
+        <v-card height="100%" class="d-flex flex-column">
+          <v-card-title>{{ title ? title : "File" }}</v-card-title>
+          <v-card-text class="flex-grow-1 d-flex">
+            <v-row no-gutters justify="center">
+              <v-col cols="12" md="8" class="d-flex">
+                <v-row no-gutters class="flex-column">
+                  <v-row no-gutters class="flex-grow-0">
+                    <v-col cols="0">
+                      <v-card tile outlined>
+                        <v-list-item>
+                          <v-list-item-avatar><v-btn icon><v-icon>mdi-chevron-left</v-icon></v-btn></v-list-item-avatar>
+                          <v-list-item-content>
+                            <v-list-item-title>My Drive</v-list-item-title>
+                          </v-list-item-content>
+                        </v-list-item>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                  <v-row no-gutters>
+                    <v-card tile outlined class="flex-grow-1"></v-card>
+                  </v-row>
+                  <v-row no-gutters class="flex-grow-0">
+                    <v-col>
+                      <v-card tile outlined>
+                        <v-list-item>
+                          <v-list-item-content>
+                            <v-list-item-title>
+                              <v-text-field label="Filename" hide-details v-model="newFilename" class="pb-2"></v-text-field>
+                            </v-list-item-title>
+                          </v-list-item-content>
+                          <v-list-item-action>
+                            <v-btn depressed @click="">Save</v-btn>
+                          </v-list-item-action>
+                        </v-list-item>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-row>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
+    </template>
+
     <style>
-      .separator { height: 1em; }
+      .file-dialog { height: 90%; }
     </style>
 
+    <script src="http://colorbrewer2.org/export/colorbrewer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
     <script>
-      class Task {
-        constructor(name, description) {
-          this.name = name;
-          this.description = description;
-          this.id = '';
-          this.time = {
-            planned: [],
-            actual: []
+      let oneday = 1000*60*60*24;
+      let startDay = new Date();
+      startDay = startDay.getFullYear() + '-' + (startDay.getMonth()+1).toString().padStart(2,'0') + '-' + startDay.getDate().toString().padStart(2,'0');
+      let endDay = new Date(Date.now() + 30*oneday); 
+      endDay = endDay.getFullYear() + '-' + (endDay.getMonth()+1).toString().padStart(2,'0') + '-' + endDay.getDate().toString().padStart(2,'0');
+
+      Vue.component('gantt-chart', {
+        template: '#gantt-chart',
+        props: ['value'],
+        mounted: function () {
+          this.settings.ganttChartName = this.value.ganttChartName;
+          this.settings.numberOfClass = this.value.numberOfClass;
+          this.settings.selectedScheme = this.value.selectedScheme;
+          this.settings.customScheme = this.value.customScheme;
+          this.settings.rowHeight = this.value.rowHeight;
+          this.settings.columnWidth = this.value.columnWidth;
+          this.settings.dateDisplay = this.value.dateDisplay;
+          this.tasks = this.value.tasks;
+        },
+        computed: {
+          colorList: function () {
+            if (this.settings.numberOfClass == 'custom') {
+              return this.settings.customScheme.map(x => x.color);
+            } else {
+              return colorbrewer[this.settings.selectedScheme][this.settings.numberOfClass];
+            }
           },
-          this.predecessors = [],
-          this.successors = [],
-          this.subtasks = []
-        }
+          minDate: function () {
+            let md = Math.min(...this.getTaskTime(this.tasks, ['planned', 'actual']));
+            if (md == Infinity) { return (new Date()).valueOf(); }
+            else { return md; }
+          },
+          maxDate: function () {
+            let md = Math.max(...this.getTaskTime(this.tasks, ['planned', 'actual']));
+            if (md == -Infinity) { return (new Date()).valueOf() + 100*oneday; }
+            else { return md + oneday; }
+          },
+          colLabels: function () {
+            let n = Math.ceil((this.maxDate - this.minDate)/oneday);
+            let labels = Array(n).fill(0).map((v,i) => i*oneday + this.minDate);
+            let monthLabels = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+            labels = labels.map(v => {
+              x = new Date(v);
+              return {
+                date: x.getDate().toString(),
+                month: monthLabels[x.getMonth()],
+                year: x.getFullYear().toString()
+              }
+            });
+            let aggregator = (acc, cur) => {
+              if ((acc.length > 0) && (cur == acc[acc.length-1].value)) { acc[acc.length - 1].count++; }
+              else { acc.push({ value: cur, count: 1 }); }
+              return acc;
+            }
+            labels = [
+              labels.map(v => v.year).reduce(aggregator, []),
+              labels.map(v => v.month).reduce(aggregator, []),
+              labels.map(v => v.date).reduce(aggregator, [])
+            ]
+            return labels;
+          },
+          numberOfColumn: function () {
+            return this.colLabels[0].reduce((acc, cur) => acc + cur.count, 0);
+          },
+          taskToDisplay: function () {
+            let getTaskToDisplay = (tasks, parent) => {
+              let list = tasks.map((task, idx) => {
+                let cTaskIdx = parent.concat([idx])
+                let subtaskIdx = [];
+                if (!task.collapsed) {
+                  subtaskIdx = getTaskToDisplay(task.subtasks, cTaskIdx);
+                }
+                return [cTaskIdx].concat(subtaskIdx);
+              });
+              return list.reduce((acc, cur) => {
+                return acc.concat(cur);
+              }, []).filter(val => val.length != 0);
+            };
+            return getTaskToDisplay(this.tasks, []);
+          }
+        },
+        data: function () {
+          return {
+            colorbrewer: colorbrewer,
+            settings: {
+              ganttChartName: "Gantt chart name",
+              numberOfClass: 3,
+              selectedScheme: 'PuBu',
+              customScheme: [],
+              rowHeight: 40,
+              columnWidth: 28,
+              dateDisplay: [0,1,2],
+              editMode: true
+            },
+            tasks: []
+          }
+        },
+        methods: {
+          addNewTask: function () {
+            this.tasks.push({
+              name: 'Task ' + (this.tasks.length + 1),
+              description: 'description',
+              planned: [startDay, endDay],
+              actual: [startDay, endDay],
+              subtasks: [],
+              collapsed: true
+            });
+            this.emitInput();
+          },
+          getTaskTime: function (tasks, keys) {
+            let list = tasks.map((task, ind, arr) => {
+              let timeInTask = [];
+              keys.forEach(k => {
+                timeInTask = timeInTask.concat(task[k]);
+              });
+              let timeInSubtasks = this.getTaskTime(task.subtasks, keys);
+              return timeInTask.concat(timeInSubtasks);
+            });
+            return list
+            .reduce((acc, cur) => {
+              return acc.concat(cur);
+            }, [])
+            .filter((val, ind, arr) => {
+              return arr.indexOf(val) == ind;
+            })
+            .map(val => new Date(val));
+          },
+          getDatePos: function (taskId, key) {
+            let task;
+            taskId.forEach((id, i) => {
+              if (i == 0) { task = this.tasks[id]; }
+              else { task = task.subtasks[id]; }
+            });
+            let date = task[key][0];
+            let curDate = (new Date(date).valueOf());
+            return (curDate - this.minDate) / (this.maxDate - this.minDate) * (this.settings.columnWidth*this.numberOfColumn);
+          },
+          getBarWidth: function (taskId, key) {
+            let task;
+            taskId.forEach((id, i) => {
+              if (i == 0) { task = this.tasks[id]; }
+              else { task = task.subtasks[id]; }
+            });
+            let dateRange = task[key];
+            let curRange = [(new Date(dateRange[0])).valueOf(), (new Date(dateRange[1])).valueOf() + oneday];
+            return (curRange[1] - curRange[0]) / (this.maxDate - this.minDate) * (this.settings.columnWidth*this.numberOfColumn);
+          },
+          getTaskId: function (taskId) {
+            return taskId.map(x => x+1).join('.');
+          },
+          getTaskFromId: function (taskId) {
+            let task;
+            taskId.forEach((id, i) => {
+              if (i == 0) { task = this.tasks[id]; }
+              else { task = task.subtasks[id]; }
+            });
+            return task;
+          },
+          setTaskFromId: function (taskId, event) {
+            let task;
+            taskId.forEach((id, i) => {
+              if (i == 0) { task = this.tasks[id]; }
+              else { task = task.subtasks[id]; }
+            });
+            task.actual = event.actual;
+            task.description = event.description;
+            task.name = event.name;
+            task.planned = event.planned;
+            task.subtasks = event.subtasks;
+            this.emitInput();
+          },
+          removeTaskWithId: function (taskId) {
+            let task;
+            taskId.forEach((id, i, arr) => {
+              if (i == 0) { task = this.tasks; }
+              else { task = task.subtasks; }
 
-        setId(id) {
-          this.id = id;
+              if (i == arr.length - 1) { task.splice(id, 1); }
+              else { task = task[id] }
+            });
+            this.emitInput();
+          },
+          reduceColWidth: function () {
+            if (this.settings.columnWidth > 1) {
+              let newCW = this.settings.columnWidth - 1;
+              if (newCW < 1) { newCW = 1; }
+              this.settings.columnWidth = newCW;
+            } else { this.settings.columnWidth *= 0.7; }
+            this.emitInput();
+          },
+          increaseColWidth: function () {
+            if (this.settings.columnWidth > 1) { this.settings.columnWidth += 1; } 
+            else { this.settings.columnWidth /= 0.7; }
+            this.emitInput();
+          },
+          reduceRowHeight: function () {
+            if (this.settings.rowHeight > 1) {
+              let newCW = this.settings.rowHeight - 1;
+              if (newCW < 1) { newCW = 1; }
+              this.settings.rowHeight = newCW;
+            } else { this.settings.rowHeight *= 0.7; }
+            this.emitInput();
+          },
+          increaseRowHeight: function () {
+            if (this.settings.rowHeight > 1) { this.settings.rowHeight += 1; } 
+            else { this.settings.rowHeight /= 0.7; }
+            this.emitInput();
+          },
+          emitInput: function () {
+            this.$emit('input', {
+              ganttChartName: this.settings.ganttChartName,
+              numberOfClass: this.settings.numberOfClass,
+              selectedScheme: this.settings.selectedScheme,
+              customScheme: this.settings.customScheme,
+              rowHeight: this.settings.rowHeight,
+              columnWidth: this.settings.columnWidth,
+              dateDisplay: this.settings.dateDisplay,
+              tasks: this.tasks
+            });
+          }
         }
+      });
 
-        changeName(name) {
-          this.name = name;
+      Vue.component('gantt-settings', {
+        template: '#gantt-settings',
+        props: ['value'],
+        data: function () {
+          return {
+            colorbrewer: colorbrewer,
+            isOpened: false,
+            dateDisplay: 0,
+            ganttChartName: "",
+            numberOfClass: 3,
+            selectedScheme: 'PuBu',
+            customScheme: [],
+            customColorDefault: {
+              tab: 0,
+              palette: {
+                hue: 100,
+                n: 60
+              },
+              color: "#ff6464"
+            },
+            customPanel: null,
+            rowHeight: 40,
+            columnWidth: 40,
+            editMode: true
+          }
+        },
+        methods: {
+          updateValue: function () {
+            this.ganttChartName = this.value.ganttChartName;
+            this.numberOfClass = this.value.numberOfClass;
+            this.selectedScheme = this.value.selectedScheme;
+            this.customScheme = this.value.customScheme;
+            this.rowHeight = this.value.rowHeight;
+            this.columnWidth = this.value.columnWidth;
+            this.dateDisplay = this.value.dateDisplay;
+            this.editMode = this.value.editMode;
+          },
+          addNewColor: function (i) {
+            if (i == null) { this.customScheme.push(JSON.parse(JSON.stringify(this.customColorDefault))); }
+            else { this.customScheme.splice(i, 0, JSON.parse(JSON.stringify(this.customColorDefault))); }
+          },
+          confirmSettings: function () {
+            this.$emit('input', {
+              ganttChartName: this.ganttChartName,
+              numberOfClass: this.numberOfClass,
+              selectedScheme: this.selectedScheme,
+              customScheme: this.customScheme,
+              rowHeight: this.rowHeight,
+              columnWidth: this.columnWidth,
+              dateDisplay: this.dateDisplay,
+              editMode: this.editMode
+            });
+          }
         }
+      });
 
-        changeDescription(description) {
-          this.description = description;
-        }
+      Vue.component('color-chooser', {
+        template: '#color-chooser',
+        computed: {
+          numSep: function () {
+            return Math.ceil(this.totalChoice/6);
+          },
+          sepVal: function () {
+            return Math.floor((255 - this.minVal)/this.numSep);
+          },
+          maxVal: function () {
+            return this.sepVal*this.numSep + this.minVal;
+          },
+          colorPalette: function () {
+            return Array(6*this.numSep)
+              .fill(0)
+              .map((x,i) => {
+                let r = 0;
+                let g = 0;
+                let b = 0;
+                if (i <= this.numSep) { r = this.maxVal; }
+                else if (i <= 2*this.numSep) { r = this.maxVal - (i - this.numSep)*this.sepVal; }
+                else if (i <= 4*this.numSep) { r = this.minVal; }
+                else if (i <= 5*this.numSep) { r = this.minVal + (i - 4*this.numSep)*this.sepVal; }
+                else { r = this.maxVal; }
 
-        addPlannedTime(start, end) {
-          this.time.planned.push(start, end);
-        }
+                if (i <= this.numSep) { g = this.minVal + i*this.sepVal; }
+                else if (i <= 3*this.numSep) { g = this.maxVal; }
+                else if (i <= 4*this.numSep) { g = this.maxVal - (i - 3*this.numSep)*this.sepVal; }
+                else { g = this.minVal; }
 
-        addActualTime(start, end) {
-          this.time.actual.push(start, end);
-        }
+                if (i <= 2*this.numSep) { b = this.minVal; }
+                else if (i <= 3*this.numSep) { b = this.minVal + (i - 2*this.numSep)*this.sepVal; }
+                else if (i <= 5*this.numSep) { b = this.maxVal; }
+                else { b = this.maxVal - (i - 5*this.numSep)*this.sepVal; }
 
-        addSuccessor(successor) {
-          this.successors.push(successor);
+                return '#' + r.toString(16).padStart(2, '0')
+                + g.toString(16).padStart(2, '0')
+                + b.toString(16).padStart(2, '0');
+              });
+          },
+          greyPalette: function () {
+            let gp = [];
+            let val = 255;
+            let sep = 17;
+            gp.push('#' + val.toString(16).padStart(2,0) + val.toString(16).padStart(2,0) + val.toString(16).padStart(2,0));
+            do {
+              val -= sep;
+              gp.push('#' + val.toString(16).padStart(2,0) + val.toString(16).padStart(2,0) + val.toString(16).padStart(2,0));
+            } while (val > 0)
+            return gp;
+          }
+        },
+        data: function () {
+          return {
+            colorbrewer: colorbrewer,
+            customColorTab: 0,
+            minVal: 100,
+            totalChoice: 60,
+            value: {
+              tab: 0,
+              palette: {
+                hue: 100,
+                n: 60
+              },
+              color: "#000000"
+            }
+          }
+        },
+        methods: {
+          add: function (x,y) {
+            return x + y;
+          },
+          minus: function (x,y) {
+            return x - y;
+          },
+          selectColor: function (newColor) {
+            this.value.color = newColor;
+            this.value.tab = this.customColorTab;
+            this.value.palette.hue = this.minVal;
+            this.value.palette.n = this.totalChoice;
+            this.$emit("input", this.value);
+            this.$emit("selected", this.value);
+          }
         }
+      });
 
-        addPredecessor(predecessor) {
-          this.predecessors.push(predecessor);
+      Vue.component('task-title', {
+        template: '#task-title',
+        props: ['value', 'cssstyle', 'editMode'],
+        data: function () {
+          return {
+            details: {},
+            isOpened: false,
+            plannedMenu: false,
+            actualMenu: false
+          };
+        },
+        computed: {
+          plannedText: function () { return this.details.planned[0] + ' ~ ' + this.details.planned[1]; },
+          actualText: function () { return this.details.actual[0] + ' ~ ' + this.details.actual[1]; }
+        },
+        methods: {
+          openDetails: function () { 
+            if (this.isOpened == false) {
+              this.isOpened = true; 
+              this.details = JSON.parse(JSON.stringify(this.value));
+            }
+          },
+          confirmChanges: function () {
+            this.$emit('input', this.details);
+          },
+          addNewSubtask: function () {
+            this.details.subtasks.push({
+              name: 'Subtask ' + (this.details.subtasks.length + 1),
+              description: 'description',
+              planned: [startDay, endDay],
+              actual: [startDay, endDay],
+              subtasks: [],
+              collapsed: true
+            });
+          },
+          removeSubtask: function (i) {
+            this.details.subtasks.splice(i,1);
+          }
         }
+      });
 
-        addSubtask(subtask) {
-          this.subtasks.push(subtask);
+      Vue.component('file-dialog', {
+        template: '#file-dialog',
+        props: ['value', 'title'],
+        watch: {
+          value: function (newVal, oldVal) { this.$emit('input', newVal); }
+        },
+        data: function () {
+          return {
+            newFilename: "untitled"
+          }
         }
-      }
+      });
 
       var vm = new Vue({
         el: '#app',
-        vuetify: new Vuetify(),
-        data: {
-          drawer: false,
-          ganttchartnameeditable: false,
-          tasks: []
+        vuetify: new Vuetify({
+          theme: {
+            themes: {
+              light: {
+                primary: '#009688',
+                accent: '#00BFA5'
+              }
+            }
+          },
+        }),
+        mounted: function () {
+          this.addNewGantt();
         },
-        mounted: function () {    
-          var task = new Task();
-          task.setId('daskjhdac');
-          task.changeName('Task 1');
-          task.changeDescription('task 1 test');
-          task.addPlannedTime(new Date(2019,0,0), new Date(2019,11,30));
-          this.tasks.push(task);
+        data: {
+          colorbrewer: colorbrewer,
+          drawer: false,
+          gantts: [],
+          gapiLoaded: false,
+          isSignedIn: false,
+          signInClick: () => {},
+          signOutClick: () => {},
+          disconnectClick: () => {},
+          user: {
+            id: "",
+            name: "",
+            email: "",
+            imageUrl: ""
+          },
+          gpicker: null,
+          notice: "",
+          showNotice: false,
+          saveAsDialog: true
+        },
+        watch: {
+          gapiLoaded: function (newVal, oldVal) {
+            if (newVal) {
+              gapi.auth2.getAuthInstance().isSignedIn.listen(this.updateSigninStatus);
+
+              this.updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+              this.signInClick = () => { gapi.auth2.getAuthInstance().signIn(); };
+              this.signOutClick = () => { gapi.auth2.getAuthInstance().signOut(); };
+              this.disconnectClick = () => { gapi.auth2.getAuthInstance().disconnect(); };
+            } else {
+              this.signInClick = () => {};
+              this.signOutClick = () => {};
+              this.disconnectClick = () => {};
+            }
+          }
+        },
+        methods: {
+          addNewGantt: function () {
+            this.gantts.push({
+              ganttChartName: 'Gantt Chart ' + (this.gantts.length + 1),
+              numberOfClass: 3,
+              selectedScheme: 'PuBu',
+              customScheme: [],
+              rowHeight: 40,
+              columnWidth: 40,
+              dateDisplay: [0,1,2],
+              tasks: []
+            });
+          },
+          updateSigninStatus: function (isSignedIn) {
+            if (isSignedIn) {
+              this.isSignedIn = true;
+              let user = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile();
+              this.user.id = user.getId();
+              this.user.name = user.getName();
+              this.user.email = user.getEmail();
+              this.user.imageUrl = user.getImageUrl();
+              this.createPicker();
+            } else {
+              this.isSignedIn = false;
+              this.user.id = '';
+              this.user.name = '';
+              this.user.email = '';
+              this.user.imageUrl = '';
+            }
+          },
+          createPicker: function () {
+            if (this.gapiLoaded) {
+              let view = new google.picker.View(google.picker.ViewId.DOCS);
+              view.setMimeTypes("application/json");
+              view.setQuery("*.pg");
+              this.gpicker = new google.picker.PickerBuilder()
+                .enableFeature(google.picker.Feature.NAV_HIDDEN)
+                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                .setAppId(APP_ID)
+                .setOAuthToken(gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token)
+                .addView(view)
+                .addView(new google.picker.DocsUploadView())
+                .setDeveloperKey(API_KEY)
+                // .setCallback(pickerCallback)
+                .build();
+              this.gpicker.setVisible(false);
+            }
+          },
+          showPicker: function () {
+            if (this.gpicker !== null) { this.gpicker.setVisible(true); }
+          },
+          newInNew: function () {
+            window.open("./", "_blank");
+          },
+          newNotice: function (notice) {
+            this.notice = notice;
+            this.showNotice = true;
+            setTimeout(() => { this.showNotice = false; }, 3000);
+          },
+          saveFile: function () {
+            if (this.isSignedIn) {
+
+            } else {
+              this.newNotice("Log in to save file to Google Drive");
+            }
+          },
+          renderSaveToDrive: function () {
+            gapi.savetodrive.go('gsaveto');
+          }
         }
-      })
+      });
+
     </script>
+
+    <!-- Google API -->
+    <script type="text/javascript">
+      var CLIENT_ID = '1019583660017-vrumapuli7mbk9p0tf9k5f930ml9id83.apps.googleusercontent.com';
+      var API_KEY = 'AIzaSyDrO_0IPW56QRVLVxJmhJ_AuwOkSMZ2Ueg';
+
+      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+
+      var SCOPES = [
+        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive.appdata'
+      ];
+      SCOPES = SCOPES.join(' ');
+
+      var APP_ID = "1019583660017";
+
+      function handleClientLoad() {
+        gapi.load('client:auth2:picker', () => {
+          gapi.client.init({
+            discoveryDocs: DISCOVERY_DOCS,
+            clientId: CLIENT_ID,
+            scope: SCOPES
+          }).then(
+            () => { vm.gapiLoaded = true; }, 
+            (error) => { console.error(error); }
+          )
+        });
+      }
+
+      function listFolders(parent, nextPageToken) {
+        let config = {
+          orderBy: "name",
+          q: "'" + parent + "' in parents"
+            + " and "
+            + "mimeType='application/vnd.google-apps.folder'"
+        };
+        if (nextPageToken) { config.PageToken = nextPageToken; }
+        return gapi.client.drive.files.list(config);
+      } 
+
+      function createFile(folderId, filename, fileContent) {
+        return gapi.client.request({
+          path: "/upload/drive/v3/files",
+          method: "POST",
+          params: { uploadType: "multipart" },
+          headers: { "Content-Type": "multipart/related; boundary=bounding" },
+          body: "--bounding\n"
+            + "Content-Type: application/json; charset=UTF-8\n\n"
+            + JSON.stringify({
+              mimeType: "application/json",
+              name: filename.endsWith(".pg") ? filename : filename + ".pg",
+              parents: [folderId]
+            })
+            + "\n\n"
+            + "--bounding\n"
+            + "Content-Type: application/json\n\n"
+            + JSON.stringify(fileContent)
+            + "\n\n"
+            + "--bounding--"
+        });
+      }
+
+      function updateFile() {
+
+      }
+    </script>
+
+    <script async defer src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script>        
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
   </body>
 </html>
