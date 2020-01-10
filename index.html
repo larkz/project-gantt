@@ -506,15 +506,20 @@
           <v-card-title v-else>File</v-card-title>
           <v-divider></v-divider>
           <v-toolbar dense flat class="flex-grow-0">
-            <v-btn icon small @click="goUp" v-if="currentFolder.parents.length > 0"><v-icon>mdi-chevron-left</v-icon></v-btn>
+            <v-btn icon small @click.stop="goUp" v-if="currentFolder.parents.length > 0"><v-icon>mdi-chevron-left</v-icon></v-btn>
             <v-subheader>{{ currentFolder.name }}</v-subheader>
           </v-toolbar>
           <v-card-text>
             <v-list class="pa-0">
-              <v-list-item v-for="f,i in files" :key="i" @click="launchFile(f)">
+              <v-list-item v-for="f,i in files" :key="i" @click.stop="launchFile(f)">
                 <v-list-item-avatar tile class="mt-0 mb-0"><v-icon>{{ getFileIcon(f.mimeType) }}</v-icon></v-list-item-avatar>
                 <v-list-item-content>
                   <v-list-item-title>{{ f.name }}</v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+              <v-list-item v-if="nextPageToken" @click.stop="listFile(currentFolder.id)">
+                <v-list-item-content>
+                  <v-list-item-title class="text-center"><v-icon>mdi-chevron-down</v-icon></v-list-item-title>
                 </v-list-item-content>
               </v-list-item>
             </v-list>
@@ -523,7 +528,8 @@
           <v-card-actions class="pt-5 pb-5">
             <v-toolbar dense flat>
               <v-text-field label="Filename" hide-details v-model="newFilename" class="mr-2"></v-text-field>
-              <v-btn color="primary" depressed @click="">Save</v-btn>
+              <v-btn color="primary" class="mr-2" depressed @click.stop="">Save</v-btn>
+              <v-btn color="secondary" depressed @click.stop="closeDialog">Cancel</v-btn>
             </v-toolbar>
           </v-card-actions>
         </v-card>
@@ -967,6 +973,7 @@
         },
         methods: {
           changeValue: function (event) { this.$emit('input', event); },
+          closeDialog: function () {this.$emit('input', false); },
           listFile: function (parent) {
             let config = {
               orderBy: "folder, name",
@@ -978,7 +985,7 @@
             return gapi.client.drive.files.list(config).then(resp => {
               console.log(resp.result);
               this.nextPageToken = resp.result.nextPageToken;
-              this.files = resp.result.files;
+              this.files = this.files.concat(resp.result.files);
               if (this.currentFolder.name == "") {
                 return gapi.client.drive.files.get({
                   fileId: this.files[0].parents[0],
@@ -1026,6 +1033,7 @@
             themes: {
               light: {
                 primary: '#009688',
+                secondary: '#B2DFDB',
                 accent: '#00BFA5'
               }
             }
