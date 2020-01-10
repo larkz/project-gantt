@@ -500,48 +500,32 @@
     </template>
 
     <template id="file-dialog">
-      <v-dialog v-model="value" content-class="file-dialog">
-        <v-card height="100%" class="d-flex flex-column">
-          <v-card-title>{{ title ? title : "File" }}</v-card-title>
-          <v-card-text class="flex-grow-1 d-flex">
-            <v-row no-gutters justify="center">
-              <v-col cols="12" md="8" class="d-flex">
-                <v-row no-gutters class="flex-column">
-                  <v-row no-gutters class="flex-grow-0">
-                    <v-col cols="0">
-                      <v-card tile outlined>
-                        <v-list-item>
-                          <v-list-item-avatar><v-btn icon><v-icon>mdi-chevron-left</v-icon></v-btn></v-list-item-avatar>
-                          <v-list-item-content>
-                            <v-list-item-title>My Drive</v-list-item-title>
-                          </v-list-item-content>
-                        </v-list-item>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                  <v-row no-gutters>
-                    <v-card tile outlined class="flex-grow-1"></v-card>
-                  </v-row>
-                  <v-row no-gutters class="flex-grow-0">
-                    <v-col>
-                      <v-card tile outlined>
-                        <v-list-item>
-                          <v-list-item-content>
-                            <v-list-item-title>
-                              <v-text-field label="Filename" hide-details v-model="newFilename" class="pb-2"></v-text-field>
-                            </v-list-item-title>
-                          </v-list-item-content>
-                          <v-list-item-action>
-                            <v-btn depressed @click="">Save</v-btn>
-                          </v-list-item-action>
-                        </v-list-item>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </v-row>
-              </v-col>
-            </v-row>
+      <v-dialog :value="value" @input="changeValue" content-class="file-dialog" scrollable max-width="800px">
+        <v-card :loading="loading">
+          <v-card-title v-if="title">{{ title }}</v-card-title>
+          <v-card-title v-else>File</v-card-title>
+          <v-divider></v-divider>
+          <v-toolbar dense flat>
+            <v-btn icon small><v-icon>mdi-chevron-left</v-icon></v-btn>
+            <v-subheader>{{ currentFolder.name }}</v-subheader>
+          </v-toolbar>
+          <v-card-text>
+            <v-list>
+              <v-list-item v-for="f,i in files" :key="i" @click="launchFile(f)">
+                <v-list-item-avatar tile><v-icon>{{ getFileIcon(f.mimeType) }}</v-icon></v-list-item-avatar>
+                <v-list-item-content>
+                  <v-list-item-title>{{ f.name }}</v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+            </v-list>
           </v-card-text>
+          <v-divider></v-divider>
+          <v-card-actions class="pt-5 pb-5">
+            <v-toolbar dense flat>
+              <v-text-field label="Filename" hide-details v-model="newFilename" class="mr-2"></v-text-field>
+              <v-btn color="primary" depressed @click="">Save</v-btn>
+            </v-toolbar>
+          </v-card-actions>
         </v-card>
       </v-dialog>
     </template>
@@ -964,11 +948,61 @@
         template: '#file-dialog',
         props: ['value', 'title'],
         watch: {
-          value: function (newVal, oldVal) { this.$emit('input', newVal); }
+          value: function (newVal, oldVal) {
+            if (newVal) { this.listFile(); }
+          }
         },
         data: function () {
           return {
-            newFilename: "untitled"
+            currentFolder: {
+              name: "",
+              id: ""
+            },
+            newFilename: "untitled",
+            nextPageToken: "",
+            loading: false,
+            files: [],
+          }
+        },
+        methods: {
+          changeValue: function (event) { this.$emit('input', event); },
+          listFile: function (parent) {
+            let config = {
+              orderBy: "folder, name",
+              q: "'" + (parent ? parent : 'root') + "' in parents",
+              fields: "nextPageToken, files(id,name,mimeType,parents,iconLink)"
+            };
+            if (this.nextPageToken) { config.PageToken = this.nextPageToken; }
+            this.loading = true;
+            return gapi.client.drive.files.list(config).then(resp => {
+              console.log(resp.result);
+              this.nextPageToken = resp.result.nextPageToken;
+              this.files = resp.result.files;
+              // if (this.currentFolder.name == "") {
+              //   return gapi.client.drive.files.get({
+              //     fileId: this.files[0].parents[0],
+              //     fields: "id,name"
+              //   }).then(resp => {
+              //     this.currentFolder.name = resp.result.name;
+              //     this.currentFolder.id = resp.result.id;
+              //     this.loading = false;
+              //   });
+              // } else { this.loading = false; }
+            }, resp => { console.log(resp) });
+          },
+          getFileIcon: function (mimeType) {
+            let fileIcon = [
+              ['folder', 'folder']
+            ];
+            let icons = fileIcon.filter(val => mimeType.includes(val[0]));
+            return icons.length > 0 ? "mdi-" + icons[0][1] : "mdi-file-question";
+          },
+          launchFile: function (file) {
+            if (file.mimeType.includes('folder')) { return this.openFolder(file.id); }
+          },
+          openFolder: function (folderId) {
+            this.nextPageToken = "";
+            return this.listFile(folderId);
           }
         }
       });
@@ -990,7 +1024,7 @@
         },
         data: {
           colorbrewer: colorbrewer,
-          drawer: false,
+          drawer: true,
           gantts: [],
           gapiLoaded: false,
           isSignedIn: false,
@@ -1006,7 +1040,7 @@
           gpicker: null,
           notice: "",
           showNotice: false,
-          saveAsDialog: true
+          saveAsDialog: false
         },
         watch: {
           gapiLoaded: function (newVal, oldVal) {
