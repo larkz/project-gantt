@@ -505,14 +505,14 @@
           <v-card-title v-if="title">{{ title }}</v-card-title>
           <v-card-title v-else>File</v-card-title>
           <v-divider></v-divider>
-          <v-toolbar dense flat>
-            <v-btn icon small><v-icon>mdi-chevron-left</v-icon></v-btn>
+          <v-toolbar dense flat class="flex-grow-0">
+            <v-btn icon small @click="goUp" v-if="currentFolder.parents.length > 0"><v-icon>mdi-chevron-left</v-icon></v-btn>
             <v-subheader>{{ currentFolder.name }}</v-subheader>
           </v-toolbar>
           <v-card-text>
-            <v-list>
+            <v-list class="pa-0">
               <v-list-item v-for="f,i in files" :key="i" @click="launchFile(f)">
-                <v-list-item-avatar tile><v-icon>{{ getFileIcon(f.mimeType) }}</v-icon></v-list-item-avatar>
+                <v-list-item-avatar tile class="mt-0 mb-0"><v-icon>{{ getFileIcon(f.mimeType) }}</v-icon></v-list-item-avatar>
                 <v-list-item-content>
                   <v-list-item-title>{{ f.name }}</v-list-item-title>
                 </v-list-item-content>
@@ -956,7 +956,8 @@
           return {
             currentFolder: {
               name: "",
-              id: ""
+              id: "",
+              parents: []
             },
             newFilename: "untitled",
             nextPageToken: "",
@@ -978,16 +979,17 @@
               console.log(resp.result);
               this.nextPageToken = resp.result.nextPageToken;
               this.files = resp.result.files;
-              // if (this.currentFolder.name == "") {
-              //   return gapi.client.drive.files.get({
-              //     fileId: this.files[0].parents[0],
-              //     fields: "id,name"
-              //   }).then(resp => {
-              //     this.currentFolder.name = resp.result.name;
-              //     this.currentFolder.id = resp.result.id;
-              //     this.loading = false;
-              //   });
-              // } else { this.loading = false; }
+              if (this.currentFolder.name == "") {
+                return gapi.client.drive.files.get({
+                  fileId: this.files[0].parents[0],
+                  fields: "id,name,parents"
+                }).then(resp => {
+                  this.currentFolder.name = resp.result.name;
+                  this.currentFolder.id = resp.result.id;
+                  this.currentFolder.parents = resp.result.parents ? resp.result.parents : [];
+                  this.loading = false;
+                });
+              } else { this.loading = false; }
             }, resp => { console.log(resp) });
           },
           getFileIcon: function (mimeType) {
@@ -998,11 +1000,21 @@
             return icons.length > 0 ? "mdi-" + icons[0][1] : "mdi-file-question";
           },
           launchFile: function (file) {
-            if (file.mimeType.includes('folder')) { return this.openFolder(file.id); }
+            if (file.mimeType.includes('folder')) { 
+              this.currentFolder.name = file.name;
+              this.currentFolder.id = file.id;
+              this.currentFolder.parents = file.parents;
+              this.nextPageToken = "";
+              this.files = [];
+              return this.listFile(file.id); 
+            }
           },
-          openFolder: function (folderId) {
+          goUp: function () {
+            this.currentFolder.name = "";
+            this.currentFolder.id = "";
             this.nextPageToken = "";
-            return this.listFile(folderId);
+            this.files = [];
+            return this.listFile(this.currentFolder.parents[0]);
           }
         }
       });
