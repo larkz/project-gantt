@@ -125,7 +125,7 @@
           </v-container>
         </v-content>
 
-        <file-dialog v-model="saveAsDialog" title="Save as..."></file-dialog>
+        <file-dialog v-model="saveAsDialog" title="Save as..." folder></file-dialog>
 
         <v-snackbar v-model="showNotice" top>
           <v-row no-gutters justify="center">
@@ -135,11 +135,6 @@
 
         <v-footer>
           <v-col class="text-center" cols=12>
-            <v-btn ref="sdrive" id="sdrive"
-              data-src="//example.com/path/to/myfile.pdf"
-              data-filename="My Statement.pdf"
-              data-sitename="My Company Name"
-            >Drive</v-btn>
             Powered by Vue and Vuetify, created by R.ich.ard
           </v-col>
         </v-footer>
@@ -505,10 +500,26 @@
           <v-card-title v-if="title">{{ title }}</v-card-title>
           <v-card-title v-else>File</v-card-title>
           <v-divider></v-divider>
-          <v-toolbar dense flat class="flex-grow-0">
-            <v-btn icon small @click.stop="goUp" v-if="currentFolder.parents.length > 0"><v-icon>mdi-chevron-left</v-icon></v-btn>
-            <v-subheader>{{ currentFolder.name }}</v-subheader>
-          </v-toolbar>
+          <v-card-actions class="pt-0 pb-0">
+            <v-row no-gutters>
+              <v-col cols="auto" align-self="center" v-if="currentFolder.id">
+                <v-btn tile icon small @click.stop="goUp" v-if="currentFolder.parents.length > 0"><v-icon>mdi-chevron-left</v-icon></v-btn>
+                <v-btn tile icon small v-else><v-icon>mdi-google-drive</v-icon></v-btn>
+              </v-col>
+              <v-col><v-subheader>{{ currentFolder.name }}</v-subheader></v-col>
+              <v-col cols="auto" class="d-flex pl-2 pr-2" :class="showAddFolder ? 'grey lighten-2' : ''" v-if="currentFolder.id">
+                <v-row no-gutters align="center" class="flex-grow-1">
+                  <v-col><v-btn tile icon small title="New folder" @click="showAddFolder = !showAddFolder"><v-icon>mdi-folder-plus</v-icon></v-btn></v-col>
+                </v-row>
+              </v-col>
+            </v-row>
+          </v-card-actions>
+          <v-card-actions class="pt-0 pb-0" v-if="showAddFolder">
+            <v-row no-gutters align="center" class="grey lighten-2 pb-2 pl-2">
+              <v-col><v-text-field hide-details class="mr-2" v-model="newFolderName" color="grey"></v-text-field></v-col>
+              <v-col cols="auto" class="pl-2 pr-2"><v-btn tile icon small @click="createFolder"><v-icon>mdi-plus</v-icon></v-btn></v-col>
+            </v-row>
+          </v-card-actions>
           <v-card-text>
             <v-list class="pa-0">
               <v-list-item v-for="f,i in files" :key="i" @click.stop="launchFile(f)">
@@ -517,7 +528,7 @@
                   <v-list-item-title>{{ f.name }}</v-list-item-title>
                 </v-list-item-content>
               </v-list-item>
-              <v-list-item v-if="nextPageToken" @click.stop="listFile(currentFolder.id)">
+              <v-list-item v-if="nextPageToken" @click.stop="listFile(currentFolder.id)" title="load more">
                 <v-list-item-content>
                   <v-list-item-title class="text-center"><v-icon>mdi-chevron-down</v-icon></v-list-item-title>
                 </v-list-item-content>
@@ -527,7 +538,7 @@
           <v-divider></v-divider>
           <v-card-actions class="pt-5 pb-5">
             <v-toolbar dense flat>
-              <v-text-field label="Filename" hide-details v-model="newFilename" class="mr-2"></v-text-field>
+              <v-text-field label="Filename" hide-details v-model="newFilename" class="mr-2" suffix=".gpjson"></v-text-field>
               <v-btn color="primary" class="mr-2" depressed @click.stop="">Save</v-btn>
               <v-btn color="secondary" depressed @click.stop="closeDialog">Cancel</v-btn>
             </v-toolbar>
@@ -952,10 +963,26 @@
 
       Vue.component('file-dialog', {
         template: '#file-dialog',
-        props: ['value', 'title'],
+        props: {
+          value: Boolean,
+          title: String,
+          folder: Boolean
+        },
         watch: {
           value: function (newVal, oldVal) {
-            if (newVal) { this.listFile(); }
+            if (newVal) { 
+              this.currentFolder.name = "";
+              this.currentFolder.id = "";
+              this.currentFolder.parents = [];
+              this.files = [];
+              this.listFile();
+            } else {
+              this.showAddFolder = false;
+            }
+          },
+          showAddFolder: function (newVal, oldVal) {
+            if (newVal) {}
+            else { this.newFolderName = ""; }
           }
         },
         data: function () {
@@ -969,23 +996,29 @@
             nextPageToken: "",
             loading: false,
             files: [],
+            showAddFolder: false,
+            newFolderName: ""
           }
         },
         methods: {
           changeValue: function (event) { this.$emit('input', event); },
-          closeDialog: function () {this.$emit('input', false); },
-          listFile: function (parent) {
+          closeDialog: function () { this.$emit('input', false); },
+          listFile: function (parent,replace=false) {
+            let query = "trashed = false" + " and " + "'" + (parent ? parent : 'root') + "' in parents";
+            let mimeTypeQuery = [];
+            if (this.folder) { mimeTypeQuery.push("application/vnd.google-apps.folder"); }
+            if (mimeTypeQuery.length > 0) { query += " and (" + mimeTypeQuery.map(m => "mimeType = '" + m + "'").join(' or ') + ")"; }
+            console.log(this.folder, query);
             let config = {
               orderBy: "folder, name",
-              q: "'" + (parent ? parent : 'root') + "' in parents",
+              q: query,
               fields: "nextPageToken, files(id,name,mimeType,parents,iconLink)"
             };
-            if (this.nextPageToken) { config.PageToken = this.nextPageToken; }
+            if (this.nextPageToken) { config.pageToken = this.nextPageToken; }
             this.loading = true;
             return gapi.client.drive.files.list(config).then(resp => {
-              console.log(resp.result);
               this.nextPageToken = resp.result.nextPageToken;
-              this.files = this.files.concat(resp.result.files);
+              this.files = replace ? resp.result.files : this.files.concat(resp.result.files);
               if (this.currentFolder.name == "") {
                 return gapi.client.drive.files.get({
                   fileId: this.files[0].parents[0],
@@ -1001,7 +1034,24 @@
           },
           getFileIcon: function (mimeType) {
             let fileIcon = [
-              ['folder', 'folder']
+              ['folder', 'folder'],
+              ['powerpoint', 'file-powerpoint'],
+              ['google-apps.presentation', 'file-presentation-box'],
+              ['ms-excel', 'file-excel'],
+              ['google-apps.spreadsheet', 'google-spreadsheet'],
+              ['openxmlformats-officedocument.spreadsheetml.sheet', 'file-excel'],
+              ['msword', 'file-word'],
+              ['google-apps.document', 'file-document'],
+              ['openxmlformats-officedocument.wordprocessingml.document', 'file-word'],
+              ['google-apps.map', 'google-maps'],
+              ['pdf', 'file-pdf'],
+              ['zip', 'folder-zip'],
+              ['rar', 'folder-zip'],
+              ['image', 'file-image'],
+              ['plain', 'file'],
+              ['json', 'file-code'],
+              ['video', 'file-video'],
+              ['html', 'web-box'],
             ];
             let icons = fileIcon.filter(val => mimeType.includes(val[0]));
             return icons.length > 0 ? "mdi-" + icons[0][1] : "mdi-file-question";
@@ -1012,16 +1062,42 @@
               this.currentFolder.id = file.id;
               this.currentFolder.parents = file.parents;
               this.nextPageToken = "";
-              this.files = [];
-              return this.listFile(file.id); 
+              return this.listFile(file.id, true); 
             }
           },
           goUp: function () {
             this.currentFolder.name = "";
             this.currentFolder.id = "";
             this.nextPageToken = "";
-            this.files = [];
-            return this.listFile(this.currentFolder.parents[0]);
+            return this.listFile(this.currentFolder.parents[0], true);
+          },
+          createFolder: function () {
+            if (this.newFolderName) {
+              this.loading = true;
+              return gapi.client.drive.files.create({
+                resource: {
+                  name: this.newFolderName,
+                  mimeType: "application/vnd.google-apps.folder",
+                  parents: this.currentFolder.id
+                }
+              }).then(resp => {
+                if (resp.status == 200) { 
+                  this.listFile(this.currentFolder.id, true).then(() => {
+                    this.showAddFolder = false;
+                    this.newFolderName = "";
+                  }); 
+                }
+                else { 
+                  this.loading = false;
+                  this.showAddFolder = false;
+                  this.newFolderName = ""; 
+                } 
+              }, resp => { 
+                this.loading = false;
+                this.showAddFolder = false;
+                this.newFolderName = "";
+              });
+            } else { console.log("newFolderName is empty"); }
           }
         }
       });
@@ -1108,27 +1184,27 @@
               this.user.imageUrl = '';
             }
           },
-          createPicker: function () {
-            if (this.gapiLoaded) {
-              let view = new google.picker.View(google.picker.ViewId.DOCS);
-              view.setMimeTypes("application/json");
-              view.setQuery("*.pg");
-              this.gpicker = new google.picker.PickerBuilder()
-                .enableFeature(google.picker.Feature.NAV_HIDDEN)
-                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-                .setAppId(APP_ID)
-                .setOAuthToken(gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token)
-                .addView(view)
-                .addView(new google.picker.DocsUploadView())
-                .setDeveloperKey(API_KEY)
-                // .setCallback(pickerCallback)
-                .build();
-              this.gpicker.setVisible(false);
-            }
-          },
-          showPicker: function () {
-            if (this.gpicker !== null) { this.gpicker.setVisible(true); }
-          },
+          // createPicker: function () {
+          //   if (this.gapiLoaded) {
+          //     let view = new google.picker.View(google.picker.ViewId.DOCS);
+          //     view.setMimeTypes("application/json");
+          //     view.setQuery("*.pg");
+          //     this.gpicker = new google.picker.PickerBuilder()
+          //       .enableFeature(google.picker.Feature.NAV_HIDDEN)
+          //       .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+          //       .setAppId(APP_ID)
+          //       .setOAuthToken(gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token)
+          //       .addView(view)
+          //       .addView(new google.picker.DocsUploadView())
+          //       .setDeveloperKey(API_KEY)
+          //       // .setCallback(pickerCallback)
+          //       .build();
+          //     this.gpicker.setVisible(false);
+          //   }
+          // },
+          // showPicker: function () {
+          //   if (this.gpicker !== null) { this.gpicker.setVisible(true); }
+          // },
           newInNew: function () {
             window.open("./", "_blank");
           },
@@ -1144,9 +1220,9 @@
               this.newNotice("Log in to save file to Google Drive");
             }
           },
-          renderSaveToDrive: function () {
-            gapi.savetodrive.go('gsaveto');
-          }
+          // renderSaveToDrive: function () {
+          //   gapi.savetodrive.go('gsaveto');
+          // }
         }
       });
 
