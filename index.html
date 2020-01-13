@@ -63,7 +63,7 @@
               <v-list-item-content><v-list-item-title>New</v-list-item-title></v-list-item-content>
               <v-list-item-action @click.stop="newInNew"><v-icon>mdi-open-in-new</v-icon></v-list-item-action>
             </v-list-item>
-            <v-list-item link @click="showPicker" v-if="isSignedIn">
+            <v-list-item link @click="" v-if="isSignedIn">
               <v-list-item-action><v-icon>mdi-folder-open</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Open</v-list-item-title></v-list-item-content>
             </v-list-item>
@@ -125,7 +125,7 @@
           </v-container>
         </v-content>
 
-        <file-dialog v-model="saveAsDialog" title="Save as..." folder></file-dialog>
+        <file-dialog v-model="saveAsDialog" title="Save as..." folder @save="saveAs"></file-dialog>
 
         <v-snackbar v-model="showNotice" top>
           <v-row no-gutters justify="center">
@@ -536,10 +536,10 @@
             </v-list>
           </v-card-text>
           <v-divider></v-divider>
-          <v-card-actions class="pt-5 pb-5">
+          <v-card-actions class="pt-7 pb-3">
             <v-toolbar dense flat>
-              <v-text-field label="Filename" hide-details v-model="newFilename" class="mr-2" suffix=".gpjson"></v-text-field>
-              <v-btn color="primary" class="mr-2" depressed @click.stop="">Save</v-btn>
+              <v-text-field label="Filename" v-model="newFilename" class="mr-2" suffix=".gpjson" :rules="[value => !!value || 'Required.']"></v-text-field>
+              <v-btn color="primary" :disabled="newFilename == ''" class="mr-2" depressed @click.stop="saveFile">Save</v-btn>
               <v-btn color="secondary" depressed @click.stop="closeDialog">Cancel</v-btn>
             </v-toolbar>
           </v-card-actions>
@@ -1098,6 +1098,12 @@
                 this.newFolderName = "";
               });
             } else { console.log("newFolderName is empty"); }
+          },
+          saveFile: function () {
+            this.$emit("save", {
+              folderId: this.currentFolder.id,
+              filename: this.newFilename
+            });
           }
         }
       });
@@ -1175,7 +1181,7 @@
               this.user.name = user.getName();
               this.user.email = user.getEmail();
               this.user.imageUrl = user.getImageUrl();
-              this.createPicker();
+              // this.createPicker();
             } else {
               this.isSignedIn = false;
               this.user.id = '';
@@ -1213,13 +1219,40 @@
             this.showNotice = true;
             setTimeout(() => { this.showNotice = false; }, 3000);
           },
-          saveFile: function () {
+          saveFile: function (folderId, filename, fileContent) {
             if (this.isSignedIn) {
+              return gapi.client.request({
+                path: "/upload/drive/v3/files",
+                method: "POST",
+                params: {
+                  uploadType: "multipart"
+                },
+                headers: {
+                  "Content-Type": "multipart/related; boundary=bounding"
+                },
+                body: "--bounding\n"
+                  + "Content-Type: application/json; charset=UTF-8\n\n"
+                  + JSON.stringify({
+                      mimeType: "application/json",
+                      name: filename.endsWith(".gpjson") ? filename : filename + ".pgjson",
+                      parents: [folderId]
+                    })
+                  + "\n\n"
+                  + "--bounding\n"
+                  + "Content-Type: application/json\n\n"
+                  + fileContent + "\n\n"
+                  + "--bounding--"
+              })
 
             } else {
               this.newNotice("Log in to save file to Google Drive");
             }
           },
+          saveAs: function (fileMeta) {
+            this.saveFile(fileMeta.folderId, fileMeta.filename, JSON.stringify(this.gantts)).then(resp => {
+              console.log(resp);
+            });
+          }
           // renderSaveToDrive: function () {
           //   gapi.savetodrive.go('gsaveto');
           // }
