@@ -112,7 +112,7 @@
         <v-content>
           <v-container>
             
-            <v-flex class="title">File name</v-flex>
+            <v-flex class="title">{{ currentFile.name ? currentFile.name : "Unsaved file" }}</v-flex>
             
             <gantt-chart v-for="gc,i in gantts" :ref="'gc' + i" :key="i"
               v-model="gantts[i]"
@@ -125,7 +125,16 @@
           </v-container>
         </v-content>
 
-        <file-dialog v-model="saveAsDialog" title="Save as..." folder @save="saveAs"></file-dialog>
+        <file-dialog v-model="saveAsDialog" title="Save as..." folder @save="saveAs" :start-location="currentFile.parents"></file-dialog>
+
+        <v-overlay :value="blockingLoading" z-index="999" class="text-center">
+          <v-icon class="display-4">mdi-loading mdi-spin</v-icon>
+          <v-row justify="center" align="center">
+            <v-col cols="auto" class="display-2 font-weight-black">
+              {{ blockingLoadingText }}
+            </v-col>
+          </v-row>
+        </v-overlay>
 
         <v-snackbar v-model="showNotice" top>
           <v-row no-gutters justify="center">
@@ -539,7 +548,7 @@
           <v-card-actions class="pt-7 pb-3">
             <v-toolbar dense flat>
               <v-text-field label="Filename" v-model="newFilename" class="mr-2" suffix=".gpjson" :rules="[value => !!value || 'Required.']"></v-text-field>
-              <v-btn color="primary" :disabled="newFilename == ''" class="mr-2" depressed @click.stop="saveFile">Save</v-btn>
+              <v-btn color="primary" :disabled="newFilename == '' || loading" class="mr-2" depressed @click.stop="saveFile">Save</v-btn>
               <v-btn color="secondary" depressed @click.stop="closeDialog">Cancel</v-btn>
             </v-toolbar>
           </v-card-actions>
@@ -966,7 +975,8 @@
         props: {
           value: Boolean,
           title: String,
-          folder: Boolean
+          folder: Boolean,
+          startLocation: Array
         },
         watch: {
           value: function (newVal, oldVal) {
@@ -975,7 +985,7 @@
               this.currentFolder.id = "";
               this.currentFolder.parents = [];
               this.files = [];
-              this.listFile();
+              this.listFile( this.startLocation.length > 0 ? this.startLocation[0] : null );
             } else {
               this.showAddFolder = false;
             }
@@ -1104,6 +1114,7 @@
               folderId: this.currentFolder.id,
               filename: this.newFilename
             });
+            this.closeDialog();
           }
         }
       });
@@ -1142,7 +1153,14 @@
           gpicker: null,
           notice: "",
           showNotice: false,
-          saveAsDialog: false
+          saveAsDialog: false,
+          currentFile: {
+            id: "",
+            name: "",
+            parents: []
+          },
+          blockingLoading: false,
+          blockingLoadingText: "loading text goes here",
         },
         watch: {
           gapiLoaded: function (newVal, oldVal) {
@@ -1249,13 +1267,25 @@
             }
           },
           saveAs: function (fileMeta) {
-            this.saveFile(fileMeta.folderId, fileMeta.filename, JSON.stringify(this.gantts)).then(resp => {
-              console.log(resp);
+            this.blockingLoading = true;
+            this.blockingLoadingText = "Saving as file " + fileMeta.filename + "...";
+            return this.saveFile(fileMeta.folderId, fileMeta.filename, JSON.stringify(this.gantts))
+              .then(resp => this.getFileMeta(resp.result.id), resp => console.error(resp.result))
+              .then(resp => {
+                console.log(resp);
+                this.currentFile.name = resp.result.name;
+                this.currentFile.id = resp.result.id;
+                this.currentFile.parents = resp.result.parents ? resp.result.parents : [];
+                this.blockingLoadingText = "Saved in file " + this.currentFile.name;
+                setTimeout(() => { this.blockingLoading = false; }, 1000);
+              });
+          },
+          getFileMeta: function (fileId) {
+            return gapi.client.drive.files.get({
+              fileId: fileId,
+              fields: "id,name,parents"
             });
           }
-          // renderSaveToDrive: function () {
-          //   gapi.savetodrive.go('gsaveto');
-          // }
         }
       });
 
@@ -1290,48 +1320,48 @@
         });
       }
 
-      function listFolders(parent, nextPageToken) {
-        let config = {
-          orderBy: "name",
-          q: "'" + parent + "' in parents"
-            + " and "
-            + "mimeType='application/vnd.google-apps.folder'"
-        };
-        if (nextPageToken) { config.PageToken = nextPageToken; }
-        return gapi.client.drive.files.list(config);
-      } 
+      // function listFolders(parent, nextPageToken) {
+      //   let config = {
+      //     orderBy: "name",
+      //     q: "'" + parent + "' in parents"
+      //       + " and "
+      //       + "mimeType='application/vnd.google-apps.folder'"
+      //   };
+      //   if (nextPageToken) { config.PageToken = nextPageToken; }
+      //   return gapi.client.drive.files.list(config);
+      // } 
 
-      function createFile(folderId, filename, fileContent) {
-        return gapi.client.request({
-          path: "/upload/drive/v3/files",
-          method: "POST",
-          params: { uploadType: "multipart" },
-          headers: { "Content-Type": "multipart/related; boundary=bounding" },
-          body: "--bounding\n"
-            + "Content-Type: application/json; charset=UTF-8\n\n"
-            + JSON.stringify({
-              mimeType: "application/json",
-              name: filename.endsWith(".pg") ? filename : filename + ".pg",
-              parents: [folderId]
-            })
-            + "\n\n"
-            + "--bounding\n"
-            + "Content-Type: application/json\n\n"
-            + JSON.stringify(fileContent)
-            + "\n\n"
-            + "--bounding--"
-        });
-      }
+      // function createFile(folderId, filename, fileContent) {
+      //   return gapi.client.request({
+      //     path: "/upload/drive/v3/files",
+      //     method: "POST",
+      //     params: { uploadType: "multipart" },
+      //     headers: { "Content-Type": "multipart/related; boundary=bounding" },
+      //     body: "--bounding\n"
+      //       + "Content-Type: application/json; charset=UTF-8\n\n"
+      //       + JSON.stringify({
+      //         mimeType: "application/json",
+      //         name: filename.endsWith(".pg") ? filename : filename + ".pg",
+      //         parents: [folderId]
+      //       })
+      //       + "\n\n"
+      //       + "--bounding\n"
+      //       + "Content-Type: application/json\n\n"
+      //       + JSON.stringify(fileContent)
+      //       + "\n\n"
+      //       + "--bounding--"
+      //   });
+      // }
 
-      function updateFile() {
+      // function updateFile() {
 
-      }
+      // }
     </script>
 
     <script async defer src="https://apis.google.com/js/api.js"
       onload="this.onload=function(){};handleClientLoad()"
       onreadystatechange="if (this.readyState === 'complete') this.onload()">
     </script>        
-    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <!-- <script src="https://apis.google.com/js/platform.js" async defer></script> -->
   </body>
 </html>
