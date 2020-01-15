@@ -121,8 +121,8 @@
           </v-container>
         </v-content>
 
-        <file-dialog v-model="saveAsDialog" title="Save as..." folder @action="saveAs" :start-location="currentFile.parents" action-name="Save"></file-dialog>
-        <file-dialog v-model="openFileDialog" title="Open..." folder @action="openFile" :start-location="currentFile.parents" hide-new-folder action-name="Open"></file-dialog>
+        <file-dialog v-model="saveAsDialog" title="Save as..." @action="saveAs" :start-location="currentFile.parents" action-name="Save"></file-dialog>
+        <file-dialog v-model="openFileDialog" title="Open..." @action="openFile" :start-location="currentFile.parents" hide-new-folder action-name="Open" file-entry-read-only highlight-selected-file></file-dialog>
 
         <v-overlay :value="blockingLoading" z-index="999" class="text-center">
           <v-icon class="display-4">mdi-loading mdi-spin</v-icon>
@@ -528,7 +528,7 @@
           </v-card-actions>
           <v-card-text>
             <v-list class="pa-0">
-              <v-list-item v-for="f,i in files" :key="i" @click.stop="launchFile(f)">
+              <v-list-item v-for="f,i in files" :key="i" @click.stop="launchFile(f)" color="white" :input-value="highlightSelectedFile && f.id == selectedFileId" :class="highlightSelectedFile && f.id == selectedFileId ? 'primary' : ''">
                 <v-list-item-avatar tile class="mt-0 mb-0"><v-icon>{{ getFileIcon(f.mimeType) }}</v-icon></v-list-item-avatar>
                 <v-list-item-content>
                   <v-list-item-title>{{ f.name }}</v-list-item-title>
@@ -544,7 +544,7 @@
           <v-divider></v-divider>
           <v-card-actions class="pt-7 pb-3">
             <v-toolbar dense flat>
-              <v-text-field label="Filename" v-model="newFilename" class="mr-2" suffix=".gpjson" :rules="[value => !!value || 'Required.']"></v-text-field>
+              <v-text-field label="Filename" v-model="newFilename" class="mr-2" suffix=".pgjson" :rules="[value => !!value || 'Required.']" :readonly="fileEntryReadOnly"></v-text-field>
               <v-btn color="primary" :disabled="newFilename == '' || loading" class="mr-2" depressed @click.stop="saveFile">{{ actionName }}</v-btn>
               <v-btn color="secondary" depressed @click.stop="closeDialog">Cancel</v-btn>
             </v-toolbar>
@@ -975,7 +975,9 @@
           folder: Boolean,
           startLocation: Array,
           hideNewFolder: Boolean,
-          actionName: String
+          actionName: String,
+          fileEntryReadOnly: Boolean,
+          highlightSelectedFile: Boolean
         },
         watch: {
           value: function (newVal, oldVal) {
@@ -1001,7 +1003,8 @@
               id: "",
               parents: []
             },
-            newFilename: "untitled",
+            selectedFileId: "",
+            newFilename: "",
             nextPageToken: "",
             loading: false,
             files: [],
@@ -1014,18 +1017,22 @@
           closeDialog: function () { this.$emit('input', false); },
           listFile: function (parent,replace=false) {
             let query = "trashed = false" + " and " + "'" + (parent ? parent : 'root') + "' in parents";
-            let mimeTypeQuery = [];
-            if (this.folder) { mimeTypeQuery.push("application/vnd.google-apps.folder"); }
-            if (mimeTypeQuery.length > 0) { query += " and (" + mimeTypeQuery.map(m => "mimeType = '" + m + "'").join(' or ') + ")"; }
-            console.log(this.folder, query);
+            let fileQueryStr = "";
+            let mimeTypeQuery = ["application/vnd.google-apps.folder"];
+            if (mimeTypeQuery.length > 0) { fileQueryStr += "(" + mimeTypeQuery.map(m => "mimeType = '" + m + "'").join(' or ') + ")"; }
+            let extQuery = [".pgjson"];
+            if (extQuery.length > 0) { fileQueryStr += " or (" + extQuery.map(e => "name contains '" + e + "'").join(' or ') + ")"; }
+            query += " and (" + fileQueryStr + ")";
+            console.log(query);
             let config = {
               orderBy: "folder, name",
               q: query,
-              fields: "nextPageToken, files(id,name,mimeType,parents,iconLink)"
+              fields: "nextPageToken, files(id,name,mimeType,parents)"
             };
             if (this.nextPageToken) { config.pageToken = this.nextPageToken; }
             this.loading = true;
             return gapi.client.drive.files.list(config).then(resp => {
+              console.log(resp.result);
               this.nextPageToken = resp.result.nextPageToken;
               this.files = replace ? resp.result.files : this.files.concat(resp.result.files);
               if (this.currentFolder.name == "") {
@@ -1072,6 +1079,9 @@
               this.currentFolder.parents = file.parents;
               this.nextPageToken = "";
               return this.listFile(file.id, true); 
+            } else {
+              this.newFilename = file.name.includes(".pgjson") ? file.name.replace(".pgjson", "") : file.name;
+              this.selectedFileId = file.id;
             }
           },
           goUp: function () {
@@ -1111,7 +1121,8 @@
           saveFile: function () {
             this.$emit("action", {
               folderId: this.currentFolder.id,
-              filename: this.newFilename
+              filename: this.newFilename,
+              fileId: this.selectedFileId
             });
             this.closeDialog();
           }
@@ -1134,6 +1145,11 @@
         mounted: function () {
           this.addNewGantt();
         },
+        watch: {
+          gantts: function (newVal, oldVal) {
+            console.log(newVal[0].tasks);
+          }
+        },
         data: {
           colorbrewer: colorbrewer,
           drawer: true,
@@ -1149,7 +1165,6 @@
             email: "",
             imageUrl: ""
           },
-          gpicker: null,
           notice: "",
           showNotice: false,
           saveAsDialog: false,
@@ -1199,7 +1214,6 @@
               this.user.name = user.getName();
               this.user.email = user.getEmail();
               this.user.imageUrl = user.getImageUrl();
-              // this.createPicker();
             } else {
               this.isSignedIn = false;
               this.user.id = '';
@@ -1208,27 +1222,6 @@
               this.user.imageUrl = '';
             }
           },
-          // createPicker: function () {
-          //   if (this.gapiLoaded) {
-          //     let view = new google.picker.View(google.picker.ViewId.DOCS);
-          //     view.setMimeTypes("application/json");
-          //     view.setQuery("*.pg");
-          //     this.gpicker = new google.picker.PickerBuilder()
-          //       .enableFeature(google.picker.Feature.NAV_HIDDEN)
-          //       .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-          //       .setAppId(APP_ID)
-          //       .setOAuthToken(gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token)
-          //       .addView(view)
-          //       .addView(new google.picker.DocsUploadView())
-          //       .setDeveloperKey(API_KEY)
-          //       // .setCallback(pickerCallback)
-          //       .build();
-          //     this.gpicker.setVisible(false);
-          //   }
-          // },
-          // showPicker: function () {
-          //   if (this.gpicker !== null) { this.gpicker.setVisible(true); }
-          // },
           newInNew: function () {
             window.open("./", "_blank");
           },
@@ -1252,7 +1245,7 @@
                   + "Content-Type: application/json; charset=UTF-8\n\n"
                   + JSON.stringify({
                       mimeType: "application/json",
-                      name: filename.endsWith(".gpjson") ? filename : filename + ".pgjson",
+                      name: filename.endsWith(".pgjson") ? filename : filename + ".pgjson",
                       parents: [folderId]
                     })
                   + "\n\n"
@@ -1286,9 +1279,32 @@
               fields: "id,name,parents"
             });
           },
-          openFile: function (fileId) {
-
-          }
+          getFile: function (fileId) {
+            return gapi.client.drive.files.get({
+              fileId: fileId,
+              alt: "media"
+            });
+          },
+          openFile: function (fileMeta) {
+            this.blockingLoading = true;
+            this.blockingLoadingText = "Opening file " + fileMeta.filename + "...";
+            return Promise.all([
+              this.getFile(fileMeta.fileId),
+              this.getFileMeta(fileMeta.fileId)
+            ]).then(resp => {
+              console.log(resp);
+              this.gantts.splice(0, this.gantts.length);
+              this.$nextTick(() => { this.gantts.push(...resp[0].result); });
+              this.currentFile.name = resp[1].result.name;
+              this.currentFile.id = resp[1].result.id;
+              this.currentFile.parents = resp[1].result.parents ? resp[1].result.parents : [];
+              this.blockingLoadingText = "Loaded file " + this.currentFile.name;
+              setTimeout(() => { this.blockingLoading = false; }, 1000);
+            }, resp => {
+              this.blockingLoadingText = "Failed to open " + fileMeta.filename;
+              setTimeout(() => { this.blockingLoading = false; }, 1000);
+            });
+          },
         }
       });
 
