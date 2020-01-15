@@ -81,8 +81,12 @@
             </v-list-item>
 
             <v-divider></v-divider>
-
-            <v-subheader>Gantt charts</v-subheader>
+            
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title class="subtitle-2">Gantt charts</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
 
             <v-list-item link v-for="gc,i in gantts" :key="i">
               <v-list-item-action><v-icon>mdi-chart-gantt</v-icon></v-list-item-action>
@@ -91,7 +95,11 @@
 
             <v-divider></v-divider>
 
-            <v-subheader>Recent</v-subheader>
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title class="subtitle-2">Recent</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
 
             <v-list-item link>
               <v-list-item-action><v-icon>mdi-file</v-icon></v-list-item-action>
@@ -1319,7 +1327,6 @@
 
       var SCOPES = [
         'https://www.googleapis.com/auth/drive.readonly',
-        'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive.appdata'
       ];
       SCOPES = SCOPES.join(' ');
