@@ -58,7 +58,7 @@
 
             <v-divider></v-divider>
 
-            <v-list-item link>
+            <v-list-item link @click="newInOld">
               <v-list-item-action><v-icon>mdi-file-plus</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>New</v-list-item-title></v-list-item-content>
               <v-list-item-action @click.stop="newInNew"><v-icon>mdi-open-in-new</v-icon></v-list-item-action>
@@ -1230,6 +1230,9 @@
               this.user.imageUrl = '';
             }
           },
+          newInOld: function () {
+            window.location.search = "";
+          },
           newInNew: function () {
             window.open("./", "_blank");
           },
@@ -1274,6 +1277,7 @@
               .then(resp => this.getFileMeta(resp.result.id), resp => console.error(resp.result))
               .then(resp => {
                 console.log(resp);
+                this.updateQueryString(resp.result.id);
                 this.currentFile.name = resp.result.name;
                 this.currentFile.id = resp.result.id;
                 this.currentFile.parents = resp.result.parents ? resp.result.parents : [];
@@ -1303,6 +1307,7 @@
               console.log(resp);
               this.gantts.splice(0, this.gantts.length);
               this.$nextTick(() => { this.gantts.push(...resp[0].result); });
+              this.updateQueryString(resp[1].result.id);
               this.currentFile.name = resp[1].result.name;
               this.currentFile.id = resp[1].result.id;
               this.currentFile.parents = resp[1].result.parents ? resp[1].result.parents : [];
@@ -1313,6 +1318,12 @@
               setTimeout(() => { this.blockingLoading = false; }, 1000);
             });
           },
+          updateQueryString: function (fileId) {
+            documentTitle = typeof documentTitle !== 'undefined' ? documentTitle : document.title;      
+            let urlSplit=( window.location.href ).split( "?" );      
+            let obj = { title: document.title, url: urlSplit[0] + "?" + fileId };      
+            history.pushState(obj, obj.title, obj.url);   
+          }
         }
       });
 
@@ -1327,6 +1338,7 @@
 
       var SCOPES = [
         'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive.appdata'
       ];
       SCOPES = SCOPES.join(' ');
