@@ -15,6 +15,8 @@
         <v-navigation-drawer
           v-model="drawer"
           app
+          clipped
+          mobile-break-point="1000"
         >
           <v-list subheader>
             <v-list-group>
@@ -67,7 +69,7 @@
               <v-list-item-action><v-icon>mdi-folder-open</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Open</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link @click="saveFile" :title="isSignedIn ? '' : 'log in to save'">
+            <v-list-item link @click="() => currentFile.id ? justSave() : null" :title="isSignedIn ? '' : 'log in to save'">
               <v-list-item-action><v-icon>mdi-content-save</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save</v-list-item-title></v-list-item-content>
             </v-list-item>
@@ -109,9 +111,11 @@
           </v-list>
         </v-navigation-drawer>
 
-        <v-app-bar app dark color="primary">
+        <v-app-bar app dark dense clipped-left color="primary">
           <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
           <v-toolbar-title>Project Gantt</v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-icon :color="contentChanged ? 'red lighten-4' : 'primary'" :title="contentChanged ? 'click to save' : ''" @click="() => contentChanged ? updateCurrentFile() : null">mdi-record</v-icon>
         </v-app-bar>
         <v-content>
           <v-container>
@@ -1184,6 +1188,7 @@
           blockingLoading: false,
           blockingLoadingText: "loading text goes here",
           openFileDialog: false,
+          contentChanged: false
         },
         watch: {
           gapiLoaded: function (newVal, oldVal) {
@@ -1293,7 +1298,21 @@
                 this.currentFile.parents = resp.result.parents ? resp.result.parents : [];
                 this.blockingLoadingText = "Saved in file " + this.currentFile.name;
                 setTimeout(() => { this.blockingLoading = false; }, 1000);
+                this.contentChanged = false;
               });
+          },
+          updateCurrentFile: function () {
+            return gapi.client.request({
+              path: "/upload/drive/v3/files/" + this.currentFile.id,
+              method: "PATCH",
+              params: {
+                uploadType: "media"
+              },
+              body: JSON.stringify(this.gantts)
+            }).then(resp => { this.contentChanged = false; });
+          },
+          justSave: function () {
+            return this.updateCurrentFile().then(() => this.newNotice("File is saved"));
           },
           getFileMeta: function (fileId) {
             return gapi.client.drive.files.get({
@@ -1327,13 +1346,14 @@
               console.log(resp);
               this.blockingLoadingText = "Failed to open " + fileMeta.filename;
               setTimeout(() => { this.blockingLoading = false; }, 1000);
+              this.contentChanged = false;
             });
           },
           updateQueryString: function (fileId) {
             documentTitle = typeof documentTitle !== 'undefined' ? documentTitle : document.title;      
             let urlSplit=( window.location.href ).split( "?" );      
             let obj = { title: document.title, url: urlSplit[0] + "?" + fileId };      
-            history.pushState(obj, obj.title, obj.url);   
+            history.pushState(obj, obj.title, obj.url);
           },
         }
       });
