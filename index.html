@@ -69,7 +69,7 @@
               <v-list-item-action><v-icon>mdi-folder-open</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Open</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link @click="() => currentFile.id ? justSave() : null" :title="isSignedIn ? '' : 'log in to save'">
+            <v-list-item link @click="justSave" :title="isSignedIn ? '' : 'log in to save'">
               <v-list-item-action><v-icon>mdi-content-save</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save</v-list-item-title></v-list-item-content>
             </v-list-item>
@@ -172,7 +172,7 @@
               <v-col><v-btn icon title="increase column width" @click="increaseColWidth"><v-icon>mdi-arrow-expand-horizontal</v-icon></v-btn></v-col>
             </v-row>
           </v-col>
-          <v-col cols="auto"><gantt-settings v-model="settings"></gantt-settings></v-col>
+          <v-col cols="auto"><gantt-settings v-model="settings" @input="emitInput"></gantt-settings></v-col>
         </v-row>
 
         <v-row no-gutters>
@@ -1204,6 +1204,9 @@
               this.signOutClick = () => {};
               this.disconnectClick = () => {};
             }
+          },
+          gantts: function () {
+            this.contentChanged = true;
           }
         },
         methods: {
@@ -1312,7 +1315,11 @@
             }).then(resp => { this.contentChanged = false; });
           },
           justSave: function () {
-            return this.updateCurrentFile().then(() => this.newNotice("File is saved"));
+            if (this.currentFile.id) {
+              return this.updateCurrentFile().then(() => this.newNotice("File is saved"));
+            } else {
+              this.saveAsDialog = true;
+            }
           },
           getFileMeta: function (fileId) {
             return gapi.client.drive.files.get({
@@ -1354,7 +1361,7 @@
             let urlSplit=( window.location.href ).split( "?" );      
             let obj = { title: document.title, url: urlSplit[0] + "?" + fileId };      
             history.pushState(obj, obj.title, obj.url);
-          },
+          }
         }
       });
 
