@@ -1222,6 +1222,16 @@
               this.user.name = user.getName();
               this.user.email = user.getEmail();
               this.user.imageUrl = user.getImageUrl();
+              let fileId = location.search;
+              if (fileId !== "") {
+                fileId = fileId.slice(1);
+                if (this.currentFile.id !== fileId) { 
+                  this.openFile({
+                    filename: fileId,
+                    fileId: fileId
+                  }); 
+                }
+              }
             } else {
               this.isSignedIn = false;
               this.user.id = '';
@@ -1314,6 +1324,7 @@
               this.blockingLoadingText = "Loaded file " + this.currentFile.name;
               setTimeout(() => { this.blockingLoading = false; }, 1000);
             }, resp => {
+              console.log(resp);
               this.blockingLoadingText = "Failed to open " + fileMeta.filename;
               setTimeout(() => { this.blockingLoading = false; }, 1000);
             });
@@ -1323,7 +1334,7 @@
             let urlSplit=( window.location.href ).split( "?" );      
             let obj = { title: document.title, url: urlSplit[0] + "?" + fileId };      
             history.pushState(obj, obj.title, obj.url);   
-          }
+          },
         }
       });
 
