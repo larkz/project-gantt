@@ -123,7 +123,7 @@
           <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
           <v-toolbar-title>Project Gantt</v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-icon :color="contentChanged ? 'red lighten-4' : 'primary'" :title="contentChanged ? 'click to save' : ''" @click="() => contentChanged ? updateCurrentFile() : null">mdi-record</v-icon>
+          <v-icon :color="contentChanged ? 'red lighten-4' : 'primary'" :title="contentChanged ? 'click to save' : ''" @click="() => contentChanged ? justSave() : null">mdi-record</v-icon>
         </v-app-bar>
         <v-content>
           <v-container>
@@ -1471,72 +1471,6 @@
     </script>
 
     <!-- Google API -->
-    <script type="text/javascript">
-      // // var CLIENT_ID = '1019583660017-vrumapuli7mbk9p0tf9k5f930ml9id83.apps.googleusercontent.com';
-      // var CLIENT_ID = '201237685823-16n8840ph4ctdgtm25tfecj6cq42u957.apps.googleusercontent.com'; //testing
-      // var API_KEY = 'AIzaSyDrO_0IPW56QRVLVxJmhJ_AuwOkSMZ2Ueg';
-
-      // var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
-
-      // var SCOPES = [
-      //   'https://www.googleapis.com/auth/drive.readonly',
-      //   'https://www.googleapis.com/auth/drive.file',
-      //   'https://www.googleapis.com/auth/drive.appdata'
-      // ];
-      // SCOPES = SCOPES.join(' ');
-
-      // var APP_ID = "1019583660017";
-
-      // function handleClientLoad() {
-      //   gapi.load('client:auth2:picker', () => {
-      //     gapi.client.init({
-      //       discoveryDocs: DISCOVERY_DOCS,
-      //       clientId: CLIENT_ID,
-      //       scope: SCOPES
-      //     }).then(
-      //       () => { vm.gapiLoaded = true; }, 
-      //       (error) => { console.error(error); }
-      //     )
-      //   });
-      // }
-
-      // function listFolders(parent, nextPageToken) {
-      //   let config = {
-      //     orderBy: "name",
-      //     q: "'" + parent + "' in parents"
-      //       + " and "
-      //       + "mimeType='application/vnd.google-apps.folder'"
-      //   };
-      //   if (nextPageToken) { config.PageToken = nextPageToken; }
-      //   return gapi.client.drive.files.list(config);
-      // } 
-
-      // function createFile(folderId, filename, fileContent) {
-      //   return gapi.client.request({
-      //     path: "/upload/drive/v3/files",
-      //     method: "POST",
-      //     params: { uploadType: "multipart" },
-      //     headers: { "Content-Type": "multipart/related; boundary=bounding" },
-      //     body: "--bounding\n"
-      //       + "Content-Type: application/json; charset=UTF-8\n\n"
-      //       + JSON.stringify({
-      //         mimeType: "application/json",
-      //         name: filename.endsWith(".pg") ? filename : filename + ".pg",
-      //         parents: [folderId]
-      //       })
-      //       + "\n\n"
-      //       + "--bounding\n"
-      //       + "Content-Type: application/json\n\n"
-      //       + JSON.stringify(fileContent)
-      //       + "\n\n"
-      //       + "--bounding--"
-      //   });
-      // }
-
-      // function updateFile() {
-
-      // }
-    </script>
     <script src="./googleapiloader.js"></script>
 
     <script async defer src="https://apis.google.com/js/api.js"
