@@ -73,15 +73,15 @@
               <v-list-item-content><v-list-item-title>New</v-list-item-title></v-list-item-content>
               <v-list-item-action @click.stop="newInNew"><v-icon>mdi-open-in-new</v-icon></v-list-item-action>
             </v-list-item>
-            <v-list-item link v-if="isSignedIn" @click="openFileDialog = true">
+            <v-list-item link :disabled="!isSignedIn" @click="openFileDialog = true">
               <v-list-item-action><v-icon>mdi-folder-open</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Open</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link @click="justSave" :title="isSignedIn ? '' : 'log in to save'">
+            <v-list-item link :disabled="!isSignedIn || !currentFile.isAppAuthorized || !currentFile.id" @click="justSave" :title="isSignedIn ? (currentFile.isAppAuthorized ? '' : 'Changes to this file cannot be saved') : 'Sign in to save file to Google Drive'">
               <v-list-item-action><v-icon>mdi-content-save</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link v-if="isSignedIn" @click="saveAsDialog = true">
+            <v-list-item link :disabled="!isSignedIn" @click="saveAsDialog = true" :title="isSignedIn ? '' : 'Sign in to save file to Google Drive'">
               <v-list-item-action><v-icon>mdi-content-save-settings</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save as</v-list-item-title></v-list-item-content>
             </v-list-item>
@@ -128,13 +128,19 @@
         <v-content>
           <v-container>
             
-            <v-flex class="title">{{ currentFile.name ? currentFile.name : "Unsaved file" }}</v-flex>
+            <v-row no-gutters class="title">
+              <v-col>{{ currentFile.name ? currentFile.name : "Unsaved file" }}</v-col>
+              <v-col cols="auto" v-if="!currentFile.isAppAuthorized">
+                <v-btn icon depressed color="red" title="This file cannot be edited. Click for more information." @click="cannotEditDialog = true"><v-icon>mdi-exclamation-thick</v-icon></v-btn>
+              </v-col>
+            </v-row>
             
             <gantt-chart v-for="gc,i in gantts" :ref="'gc' + i" :key="i"
+              :is-app-authorized="currentFile.isAppAuthorized"
               v-model="gantts[i]"
             ></gantt-chart>
 
-            <v-row no-gutters>
+            <v-row no-gutters v-if="currentFile.isAppAuthorized">
               <v-col><v-btn tile block depressed style="background-color: white; border: 1px solid #ddd" title="new Gantt chart" @click="addNewGantt"><v-icon>mdi-plus</v-icon></v-btn></v-col>
             </v-row>
 
@@ -144,6 +150,24 @@
         <help-dialog v-model="helpDialog"></help-dialog>
         <file-dialog v-model="saveAsDialog" title="Save as..." @action="saveAs" :start-location="currentFile.parents" action-name="Save"></file-dialog>
         <file-dialog v-model="openFileDialog" title="Open..." @action="openFile" :start-location="currentFile.parents" hide-new-folder action-name="Open" file-entry-read-only highlight-selected-file></file-dialog>
+
+        <v-dialog v-model="cannotEditDialog">
+          <v-card>
+            <v-card-title>Why I can't edit this file?</v-card-title>
+            <v-card-text class="pb-0">
+              It's likely that you are here because you opened a file that is 
+              <ul>
+                <li>shared by someone else, or</li>
+                <li>created with text editor</li>
+              </ul>
+              using a url or the open dialog in this app. 
+            </v-card-text>
+            <v-card-title>Solution</v-card-title>
+            <v-card-text>
+              Go to your Google Drive, connect to this app through the store, and open this file from Google Drive directly.
+            </v-card-text>
+          </v-card>
+        </v-dialog>
 
         <v-overlay :value="blockingLoading" z-index="999" class="text-center">
           <v-icon class="display-4">mdi-loading mdi-spin</v-icon>
@@ -172,7 +196,7 @@
       <v-container>
         <v-row no-gutters class="pt-3 pb-2" align="end">
           <v-col class="title">{{ settings.ganttChartName }}</v-col>
-          <v-col cols="auto">
+          <v-col cols="auto" v-if="isAppAuthorized">
             <v-row no-gutters>
               <v-col><v-btn icon title="toggle edit mode" @click="settings.editMode = !settings.editMode"><v-icon>mdi-pencil</v-icon></v-btn></v-col>
               <v-col><v-btn icon title="decrease row height" @click="reduceRowHeight"><v-icon>mdi-arrow-collapse-vertical</v-icon></v-btn></v-col>
@@ -181,7 +205,7 @@
               <v-col><v-btn icon title="increase column width" @click="increaseColWidth"><v-icon>mdi-arrow-expand-horizontal</v-icon></v-btn></v-col>
             </v-row>
           </v-col>
-          <v-col cols="auto"><gantt-settings v-model="settings" @input="emitInput"></gantt-settings></v-col>
+          <v-col cols="auto" v-if="isAppAuthorized"><gantt-settings v-model="settings" @input="emitInput"></gantt-settings></v-col>
         </v-row>
 
         <v-row no-gutters>
@@ -639,7 +663,7 @@
 
       Vue.component('gantt-chart', {
         template: '#gantt-chart',
-        props: ['value'],
+        props: ['value', 'isAppAuthorized'],
         mounted: function () {
           this.settings.ganttChartName = this.value.ganttChartName;
           this.settings.numberOfClass = this.value.numberOfClass;
@@ -649,6 +673,11 @@
           this.settings.columnWidth = this.value.columnWidth;
           this.settings.dateDisplay = this.value.dateDisplay;
           this.tasks = this.value.tasks;
+        },
+        watch: {
+          isAppAuthorized: function (newVal) {
+            if (newVal) { this.settings.editMode = true; }
+          }
         },
         computed: {
           colorList: function () {
@@ -723,7 +752,7 @@
               rowHeight: 40,
               columnWidth: 28,
               dateDisplay: [0,1,2],
-              editMode: true
+              editMode: true && this.isAppAuthorized
             },
             tasks: []
           }
@@ -1275,10 +1304,12 @@
           saveAsDialog: false,
           openFileDialog: false,
           helpDialog: false,
+          cannotEditDialog: false,
           currentFile: {
             id: "",
             name: "",
-            parents: []
+            parents: [],
+            isAppAuthorized: true
           },
           blockingLoading: false,
           blockingLoadingText: "loading text goes here",
@@ -1393,6 +1424,7 @@
                 this.currentFile.name = resp.result.name;
                 this.currentFile.id = resp.result.id;
                 this.currentFile.parents = resp.result.parents ? resp.result.parents : [];
+                this.currentFile.isAppAuthorized = resp.result.isAppAuthorized;
                 this.blockingLoadingText = "Saved in file " + this.currentFile.name;
                 setTimeout(() => { this.blockingLoading = false; }, 1000);
                 this.contentChanged = false;
@@ -1418,7 +1450,7 @@
           getFileMeta: function (fileId) {
             return gapi.client.drive.files.get({
               fileId: fileId,
-              fields: "id,name,parents"
+              fields: "id,name,parents,isAppAuthorized"
             });
           },
           getFile: function (fileId) {
@@ -1444,6 +1476,7 @@
               this.currentFile.name = resp[1].result.name;
               this.currentFile.id = resp[1].result.id;
               this.currentFile.parents = resp[1].result.parents ? resp[1].result.parents : [];
+              this.currentFile.isAppAuthorized = resp[1].result.isAppAuthorized;
               this.blockingLoadingText = "Loaded file " + this.currentFile.name;
               setTimeout(() => { this.blockingLoading = false; }, 1000);
             }, resp => {
@@ -1459,7 +1492,7 @@
             history.pushState(obj, obj.title, obj.url);
           },
           autosave: function () {
-            if (this.contentChanged && this.isSignedIn && this.currentFile.id) { this.updateCurrentFile(); }
+            if (this.contentChanged && this.isSignedIn && this.currentFile.id && this.currentFile.isAppAuthorized) { this.updateCurrentFile(); }
             setTimeout(this.autosave, 20000);
           },
           openPrivacyPolicy: function () {
