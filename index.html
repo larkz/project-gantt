@@ -165,13 +165,13 @@
             Powered by Vue and Vuetify, created by R.ich.ard
           </v-col>
         </v-footer>
-      </v-app >
+      </v-app>
     </div>
 
     <template id="gantt-chart">
       <v-container>
-        <v-row no-gutters class="pt-3 pb-2">
-          <v-col>{{ settings.ganttChartName }}</v-col>
+        <v-row no-gutters class="pt-3 pb-2" align="end">
+          <v-col class="title">{{ settings.ganttChartName }}</v-col>
           <v-col cols="auto">
             <v-row no-gutters>
               <v-col><v-btn icon title="toggle edit mode" @click="settings.editMode = !settings.editMode"><v-icon>mdi-pencil</v-icon></v-btn></v-col>
@@ -261,6 +261,15 @@
             </v-row>
           </v-col>
         </v-row>
+        
+        <template v-if="tasks.length > 0">
+          <v-row no-gutters class="pt-2">
+            <v-col class="font-weight-black">Descriptions</v-col>
+          </v-row>
+          <v-row no-gutters class="pt-2">
+            <task-description-list :task-list="tasks"></task-description-list>
+          </v-row>
+        </template>
       </v-container>
     </template>
 
@@ -432,7 +441,7 @@
           </v-row>
           <v-dialog v-model="isOpened" max-width="1000px">
             <v-card>
-              <v-card-title>Task description</v-card-title>
+              <v-card-title>Task details</v-card-title>
               <v-card-text>
                 <v-row no-gutters class="mb-4"><v-col><v-text-field hide-details v-model="details.name" label="Task name"></v-text-field></v-col></v-row>
                 <v-row no-gutters class="mb-4"><v-col><v-textarea outlined hide-details v-model="details.description" label="Task description"></v-textarea></v-col></v-row>
@@ -521,6 +530,29 @@
       </v-row>
     </template>
 
+    <template id="task-description-list">
+      <v-expansion-panels accordion multiple>
+        <task-description v-for="t,i in taskList" :key="i" :task="t" :task-number="i+1"></task-description>
+      </v-expansion-panels>
+    </template>
+
+    <template id="task-description">
+      <v-expansion-panel>
+        <v-expansion-panel-header>
+          <v-row no-gutters>
+            <v-col cols="auto" class="pr-2">{{ taskNumber }}</v-col>
+            <v-col cols="auto" class="pr-2">|</v-col>
+            <v-col>{{ task.name }}</v-col>
+          </v-row>
+        </v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <v-row no-gutters><v-col>{{ task.description }}</v-col></v-row>
+          <v-row no-gutters v-if="task.subtasks" class="pt-3"><v-col><task-description-list :task-list="task.subtasks"></task-description-list></v-col></v-row>
+        </v-expansion-panel-content>
+
+      </v-expansion-panel>
+    </template>
+
     <template id="file-dialog">
       <v-dialog :value="value" @input="changeValue" content-class="file-dialog" scrollable>
         <v-card :loading="loading">
@@ -581,7 +613,7 @@
           <v-divider></v-divider>
           <v-card-text class="pt-5">
             <v-expansion-panels>
-              <v-expansion-panel v-for="c in content">
+              <v-expansion-panel v-for="c,i in content" :key="i">
                 <v-expansion-panel-header v-html="c.title"></v-expansion-panel-header>
                 <v-expansion-panel-content>{{ c.content }}</v-expansion-panel-content>
               </v-expansion-panel>
@@ -1005,6 +1037,18 @@
         }
       });
 
+      Vue.component('task-description-list', {
+        template: '#task-description-list',
+        props: ['taskList'],
+        data: function () { return {}; }
+      });
+
+      Vue.component('task-description', {
+        template: '#task-description',
+        props: ['task', 'taskNumber'],
+        data: function () { return {}; }
+      });
+
       Vue.component('file-dialog', {
         template: '#file-dialog',
         props: {
@@ -1230,7 +1274,7 @@
           showNotice: false,
           saveAsDialog: false,
           openFileDialog: false,
-          helpDialog: true,
+          helpDialog: false,
           currentFile: {
             id: "",
             name: "",
