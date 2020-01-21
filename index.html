@@ -1472,32 +1472,33 @@
 
     <!-- Google API -->
     <script type="text/javascript">
-      var CLIENT_ID = '1019583660017-vrumapuli7mbk9p0tf9k5f930ml9id83.apps.googleusercontent.com';
-      var API_KEY = 'AIzaSyDrO_0IPW56QRVLVxJmhJ_AuwOkSMZ2Ueg';
+      // // var CLIENT_ID = '1019583660017-vrumapuli7mbk9p0tf9k5f930ml9id83.apps.googleusercontent.com';
+      // var CLIENT_ID = '201237685823-16n8840ph4ctdgtm25tfecj6cq42u957.apps.googleusercontent.com'; //testing
+      // var API_KEY = 'AIzaSyDrO_0IPW56QRVLVxJmhJ_AuwOkSMZ2Ueg';
 
-      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+      // var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
 
-      var SCOPES = [
-        'https://www.googleapis.com/auth/drive.readonly',
-        'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/drive.appdata'
-      ];
-      SCOPES = SCOPES.join(' ');
+      // var SCOPES = [
+      //   'https://www.googleapis.com/auth/drive.readonly',
+      //   'https://www.googleapis.com/auth/drive.file',
+      //   'https://www.googleapis.com/auth/drive.appdata'
+      // ];
+      // SCOPES = SCOPES.join(' ');
 
-      var APP_ID = "1019583660017";
+      // var APP_ID = "1019583660017";
 
-      function handleClientLoad() {
-        gapi.load('client:auth2:picker', () => {
-          gapi.client.init({
-            discoveryDocs: DISCOVERY_DOCS,
-            clientId: CLIENT_ID,
-            scope: SCOPES
-          }).then(
-            () => { vm.gapiLoaded = true; }, 
-            (error) => { console.error(error); }
-          )
-        });
-      }
+      // function handleClientLoad() {
+      //   gapi.load('client:auth2:picker', () => {
+      //     gapi.client.init({
+      //       discoveryDocs: DISCOVERY_DOCS,
+      //       clientId: CLIENT_ID,
+      //       scope: SCOPES
+      //     }).then(
+      //       () => { vm.gapiLoaded = true; }, 
+      //       (error) => { console.error(error); }
+      //     )
+      //   });
+      // }
 
       // function listFolders(parent, nextPageToken) {
       //   let config = {
@@ -1536,6 +1537,7 @@
 
       // }
     </script>
+    <script src="./googleapiloader.js"></script>
 
     <script async defer src="https://apis.google.com/js/api.js"
       onload="this.onload=function(){};handleClientLoad()"
