@@ -85,9 +85,9 @@
               <v-list-item-action><v-icon>mdi-content-save-settings</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save as</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <!-- <v-list-item link>
+            <!-- <v-list-item link @click="printMode = !printMode">
               <v-list-item-action><v-icon>mdi-printer</v-icon></v-list-item-action>
-              <v-list-item-content><v-list-item-title>Enter print mode</v-list-item-title></v-list-item-content>
+              <v-list-item-content><v-list-item-title>{{ printMode ? 'Exit' : 'Enter' }} print mode</v-list-item-title></v-list-item-content>
             </v-list-item> -->
 
             <v-divider></v-divider>
@@ -1326,7 +1326,8 @@
           },
           blockingLoading: false,
           blockingLoadingText: "loading text goes here",
-          contentChanged: false
+          contentChanged: false,
+          printMode: false
         },
         watch: {
           gapiLoaded: function (newVal, oldVal) {
