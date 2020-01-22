@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8">
     <title>Project Gantt</title>
-    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <link href="//fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="//cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="//cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
     <style>
       [v-cloak] { display:none; }
@@ -157,14 +157,14 @@
             <v-card-text class="pb-0">
               It's likely that you are here because you opened a file that is 
               <ul>
-                <li>shared by someone else, or</li>
+                <!-- <li>shared by someone else, or</li> -->
                 <li>created with text editor</li>
               </ul>
               using a url or the open dialog in this app. 
             </v-card-text>
             <v-card-title>Solution</v-card-title>
             <v-card-text>
-              Go to your Google Drive, connect to this app through the store, and open this file from Google Drive directly.
+              Go to your Google Drive and open this file from Google Drive directly using the <kbd>Open with...</kbd> menu.
             </v-card-text>
           </v-card>
         </v-dialog>
@@ -652,8 +652,8 @@
     </template>
 
     <script src="./colorbrewer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
     <script>
       let oneday = 1000*60*60*24;
       let startDay = new Date();
@@ -1252,7 +1252,8 @@
               },
               {
                 title: "Share file",
-                content: "To share file with other Google Drive users, share the file from Google Drive."
+                // content: "To share file with other Google Drive users, share the file from Google Drive."
+                content: "This app is not able to handle files from shared drive yet."
               },
               {
                 title: "Print mode",
@@ -1335,8 +1336,8 @@
           }
         },
         methods: {
-          addNewGantt: function () {
-            this.gantts.push({
+          getNewGantt: function () {
+            return {
               ganttChartName: 'Gantt Chart ' + (this.gantts.length + 1),
               numberOfClass: 3,
               selectedScheme: 'PuBu',
@@ -1345,7 +1346,10 @@
               columnWidth: 40,
               dateDisplay: [0,1,2],
               tasks: []
-            });
+            };
+          },
+          addNewGantt: function () {
+            this.gantts.push(this.getNewGantt());
           },
           updateSigninStatus: function (isSignedIn) {
             if (isSignedIn) {
@@ -1355,14 +1359,37 @@
               this.user.name = user.getName();
               this.user.email = user.getEmail();
               this.user.imageUrl = user.getImageUrl();
-              let fileId = location.search;
-              if (fileId !== "") {
-                fileId = fileId.slice(1);
-                if (this.currentFile.id !== fileId) { 
-                  this.openFile({
-                    filename: fileId,
-                    fileId: fileId
-                  }); 
+              let searchParams = new URLSearchParams(location.search);
+              if (searchParams.get('user')) {
+                if (this.user.id == searchParams.get('user')) {
+                  if (searchParams.get('action') == "open") {
+                    if (searchParams.get('file') && (this.currentFile.id !== searchParams.get('file'))) {
+                      this.openFile({
+                        filename: searchParams.get('file'),
+                        fileId: searchParams.get('file')
+                      });
+                    }
+                  } else if (searchParams.get('action') == "create") {
+                    if (searchParams.get('folder')) {
+                      this.blockingLoading = true;
+                      this.blockingLoadingText = "Creating file...";
+                      this.saveFile(searchParams.get('folder'), 'Untitled.pgjson', JSON.stringify(this.getNewGantt()))
+                        .then(resp => {
+                          this.updateQueryString(resp.result.id);
+                          this.blockingLoadingText = "New file created";
+                          this.gantts.splice(0, this.gantts.length);
+                          this.$nextTick(() => { 
+                            this.addNewGantt();
+                            this.$nextTick(() => { this.contentChanged = false; });
+                          });
+                          setTimeout(() => { this.blockingLoading = false; }, 1000);
+                        }, resp => {
+                          this.newNotice('Unable to create new Project Gantt file in the provided folder');
+                        });
+                    }
+                  }
+                } else {
+                  this.newNotice('Requested user and signed in user are different. File will not be opened/created.')
                 }
               }
             } else {
@@ -1371,6 +1398,7 @@
               this.user.name = '';
               this.user.email = '';
               this.user.imageUrl = '';
+              if (location.search !== '') { this.newNotice("Sign in to access to the file"); }
             }
           },
           newInOld: function () {
@@ -1486,9 +1514,13 @@
             });
           },
           updateQueryString: function (fileId) {
-            documentTitle = typeof documentTitle !== 'undefined' ? documentTitle : document.title;      
-            let urlSplit=( window.location.href ).split( "?" );      
-            let obj = { title: document.title, url: urlSplit[0] + "?" + fileId };      
+            documentTitle = typeof documentTitle !== 'undefined' ? documentTitle : document.title;
+            let searchParams = new URLSearchParams();
+            searchParams.set('file', fileId);
+            searchParams.set('user', this.user.id);
+            searchParams.set('action', 'open');
+            let urlSplit=( window.location.href ).split( "?" );
+            let obj = { title: document.title, url: urlSplit[0] + "?" + searchParams.toString() };      
             history.pushState(obj, obj.title, obj.url);
           },
           autosave: function () {
@@ -1506,7 +1538,7 @@
     <!-- Google API -->
     <script src="./googleapiloader.js"></script>
 
-    <script async defer src="https://apis.google.com/js/api.js"
+    <script async defer src="//apis.google.com/js/api.js"
       onload="this.onload=function(){};handleClientLoad()"
       onreadystatechange="if (this.readyState === 'complete') this.onload()">
     </script>        
