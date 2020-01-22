@@ -85,10 +85,10 @@
               <v-list-item-action><v-icon>mdi-content-save-settings</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Save as</v-list-item-title></v-list-item-content>
             </v-list-item>
-            <v-list-item link>
+            <!-- <v-list-item link>
               <v-list-item-action><v-icon>mdi-printer</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>Enter print mode</v-list-item-title></v-list-item-content>
-            </v-list-item>
+            </v-list-item> -->
 
             <v-divider></v-divider>
             
@@ -98,12 +98,12 @@
               </v-list-item-content>
             </v-list-item>
 
-            <v-list-item link v-for="gc,i in gantts" :key="i">
+            <v-list-item link v-for="gc,i in gantts" :key="i" @click="updateHash(i)">
               <v-list-item-action><v-icon>mdi-chart-gantt</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>{{ gc.ganttChartName }}</v-list-item-title></v-list-item-content>
             </v-list-item>
 
-            <v-divider></v-divider>
+            <!-- <v-divider></v-divider>
 
             <v-list-item>
               <v-list-item-content>
@@ -114,7 +114,7 @@
             <v-list-item link>
               <v-list-item-action><v-icon>mdi-file</v-icon></v-list-item-action>
               <v-list-item-content><v-list-item-title>File 1</v-list-item-title></v-list-item-content>
-            </v-list-item>
+            </v-list-item> -->
             
           </v-list>
         </v-navigation-drawer>
@@ -135,7 +135,7 @@
               </v-col>
             </v-row>
             
-            <gantt-chart v-for="gc,i in gantts" :ref="'gc' + i" :key="i"
+            <gantt-chart v-for="gc,i in gantts" :ref="'gc' + i" :key="i" :id="'gc' + i"
               :is-app-authorized="currentFile.isAppAuthorized"
               v-model="gantts[i]"
             ></gantt-chart>
@@ -1529,6 +1529,9 @@
           },
           openPrivacyPolicy: function () {
             window.open("./privacypolicy.html", "_blank");
+          },
+          updateHash: function (i) {
+            location.hash = "gc" + i;
           }
         }
       });
