@@ -583,14 +583,17 @@
         <v-card :loading="loading">
           <v-card-title v-if="title">{{ title }}</v-card-title>
           <v-card-title v-else>File</v-card-title>
-          <v-divider></v-divider>
-          <v-card-actions class="pt-0 pb-0">
-            <v-row no-gutters>
-              <v-col cols="auto" align-self="center" v-if="currentFolder.id">
+          
+          <v-card-actions class="pt-1 pb-0">
+            <v-row no-gutters align="center">
+              <v-col cols="auto" align-self="center" v-if="currentFolder.id" class="pr-2">
                 <v-btn tile icon small @click.stop="goUp" v-if="currentFolder.parents.length > 0"><v-icon>mdi-chevron-left</v-icon></v-btn>
                 <v-btn tile icon small v-else><v-icon>mdi-google-drive</v-icon></v-btn>
               </v-col>
-              <v-col><v-subheader>{{ currentFolder.name }}</v-subheader></v-col>
+              <v-col>{{ currentFolder.name }}</v-col>
+              <v-col cols="auto">
+                <v-switch inset v-model="showId" label="Show ID" dense hide-details class="mt-0 pt-0 pr-1"></v-switch>
+              </v-col>
               <v-col cols="auto" class="d-flex pl-2 pr-2" :class="showAddFolder ? 'grey lighten-2' : ''" v-if="currentFolder.id && !hideNewFolder">
                 <v-row no-gutters align="center" class="flex-grow-1">
                   <v-col><v-btn tile icon small title="New folder" @click="showAddFolder = !showAddFolder"><v-icon>mdi-folder-plus</v-icon></v-btn></v-col>
@@ -604,6 +607,9 @@
               <v-col cols="auto" class="pl-2 pr-2"><v-btn tile icon small @click="createFolder"><v-icon>mdi-plus</v-icon></v-btn></v-col>
             </v-row>
           </v-card-actions>
+
+          <v-divider></v-divider>
+
           <v-card-text>
             <v-list class="pa-0">
               <v-list-item v-for="f,i in files" :key="i" @click.stop="launchFile(f)" color="white" :input-value="highlightSelectedFile && f.id == selectedFileId" :class="highlightSelectedFile && f.id == selectedFileId ? 'primary' : ''">
@@ -1121,7 +1127,8 @@
             loading: false,
             files: [],
             showAddFolder: false,
-            newFolderName: ""
+            newFolderName: "",
+            showId: false
           }
         },
         methods: {
