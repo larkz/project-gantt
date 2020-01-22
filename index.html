@@ -128,8 +128,9 @@
         <v-content>
           <v-container>
             
-            <v-row no-gutters class="title">
-              <v-col>{{ currentFile.name ? currentFile.name : "Unsaved file" }}</v-col>
+            <v-row no-gutters class="title" align="end">
+              <v-col>{{ currentFile.name ? fileNameForDisplay : "Unsaved file" }}</v-col>
+              <v-col cols="auto" class="subtitle-2" v-if="currentFile.name.endsWith('.pgjson')">.pgjson</v-col>
               <v-col cols="auto" v-if="!currentFile.isAppAuthorized">
                 <v-btn icon depressed color="red" title="This file cannot be edited. Click for more information." @click="cannotEditDialog = true"><v-icon>mdi-exclamation-thick</v-icon></v-btn>
               </v-col>
@@ -1333,6 +1334,15 @@
           },
           gantts: function () {
             this.contentChanged = true;
+          }
+        },
+        computed: {
+          fileNameForDisplay: function () {
+            if (this.currentFile.name.endsWith('.pgjson')) {
+              return this.currentFile.name.slice(0, this.currentFile.name.lastIndexOf('.pgjson'));
+            } else {
+              return this.currentFile.name;
+            }
           }
         },
         methods: {
