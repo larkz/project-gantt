@@ -5,7 +5,8 @@ var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/res
 var SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.appdata'
+  'https://www.googleapis.com/auth/drive.appdata',
+  'https://www.googleapis.com/auth/drive.install'
 ];
 SCOPES = SCOPES.join(' ');
 
