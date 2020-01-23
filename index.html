@@ -615,7 +615,11 @@
               <v-list-item v-for="f,i in files" :key="i" @click.stop="launchFile(f)" color="white" :input-value="highlightSelectedFile && f.id == selectedFileId" :class="highlightSelectedFile && f.id == selectedFileId ? 'primary' : ''">
                 <v-list-item-avatar tile class="mt-0 mb-0"><v-icon>{{ getFileIcon(f.mimeType) }}</v-icon></v-list-item-avatar>
                 <v-list-item-content>
-                  <v-list-item-title>{{ f.name }}</v-list-item-title>
+                  <v-list-item-title>
+                    <v-row no-gutters align="end">
+                      <v-col cols="auto">{{ f.name }}</v-col>
+                      <v-col class="text-no-wrap text-truncate grey--text subtitle-2" v-show="showId">&nbsp;-&nbsp;{{ f.id }}</v-col>
+                    </v-row>
                 </v-list-item-content>
               </v-list-item>
               <v-list-item v-if="nextPageToken" @click.stop="listFile(currentFolder.id)" title="load more">
