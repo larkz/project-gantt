@@ -256,7 +256,7 @@
           </v-col>
 
           <v-col style="overflow: auto;">
-            <v-row no-gutters style="height: 40px; border: 1px solid #ddd; border-left: 0px; background-color: white" justify="center" align="center">
+            <v-row no-gutters style="height: 40px; border: 1px solid #ddd; border-left: 0px; background-color: white" justify="center" align="center" :style="{ width: (settings.columnWidth * numberOfColumn) + 'px', 'max-width': '100%' }">
               <v-col cols="auto" class="text-no-wrap text-truncate">
                 Date
               </v-col>
@@ -270,7 +270,7 @@
                     </v-row>
                   </v-col>
                 </v-row>
-                <v-row no-gutters :style="{ width: (settings.columnWidth * numberOfColumn) + 'px'}">
+                <v-row no-gutters :style="{ width: (settings.columnWidth * numberOfColumn) + 'px' }">
                   <v-col cols="0" :style="{ height: (settings.rowHeight * taskToDisplay.length) + 'px' }" class="d-flex flex-column">
                     <v-row no-gutters class="flex-nowrap" style="position: relative;" v-for="taskId,m in taskToDisplay" :key="m">
                       <v-col cols="0" class="d-flex" v-for="cl,i in numberOfColumn" :key="i" style="border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; background-color: white">
