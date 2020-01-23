@@ -556,7 +556,7 @@
     </template>
 
     <template id="task-description-list">
-      <v-expansion-panels accordion multiple>
+      <v-expansion-panels accordion multiple v-model="expandedList">
         <task-description v-for="t,i in taskList" :key="i" :task="t" :task-number="i+1"></task-description>
       </v-expansion-panels>
     </template>
@@ -1080,7 +1080,7 @@
       Vue.component('task-description-list', {
         template: '#task-description-list',
         props: ['taskList'],
-        data: function () { return {}; }
+        data: function () { return { }; }
       });
 
       Vue.component('task-description', {
