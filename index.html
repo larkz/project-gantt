@@ -458,7 +458,7 @@
       <v-row no-gutters justify="start" align="center" @click="openDetails" style="cursor: pointer">
         <v-col>
           <v-row no-gutters align="center">
-            <v-col cols="auto"><v-btn icon small v-if="editMode" @click.stop=""><v-icon>mdi-cursor-move</v-icon></v-btn></v-col>
+            <!-- <!-- <v-col cols="auto"><v-btn icon small v-if="editMode" @click.stop=""><v-icon>mdi-cursor-move</v-icon></v-btn></v-col> --> -->
             <v-col cols="0" class="pl-1 pr-1 text-no-wrap text-truncate" :title="value.description">
               <slot v-bind:value="value"><v-icon v-if="value.subtasks.length>0" @click.stop="value.collapsed = !value.collapsed">{{ value.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}</v-icon>{{ value.name }}</slot>
             </v-col>
