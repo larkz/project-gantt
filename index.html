@@ -127,7 +127,8 @@
 
         <v-app-bar app dark dense clipped-left color="primary">
           <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-          <v-toolbar-title>Project Gantt</v-toolbar-title>
+          <v-avatar tile height="75%" aspect-ratio="1"><v-img src="icons/icon.png" contain></v-img></v-avatar>
+          <v-toolbar-title class="pr-1">Project Gantt</v-toolbar-title>
           <v-spacer></v-spacer>
           <v-icon :color="contentChanged ? 'red lighten-4' : 'primary'" :title="contentChanged ? 'click to save' : ''" @click="() => contentChanged ? justSave() : null">mdi-record</v-icon>
         </v-app-bar>
@@ -1583,9 +1584,41 @@
           updateHash: function (i) {
             location.hash = "gc" + i;
           },
-          reorderTask: function (ev, gci) {
-            console.log(gci, ev);
-            
+          reorderTask: function (taskIds, gci) {
+            console.log(gci, taskIds);
+            let taskIdToMove = JSON.parse(taskIds[0]);
+            let taskIdToPrepend = JSON.parse(taskIds[1]);
+            console.log(taskIdToMove, taskIdToPrepend);
+            let taskToMove;
+            taskIdToMove.forEach((id,i,arr) => {
+              if (i == 0) { 
+                if (i == arr.length - 1) { taskToMove = this.gantts[gci].tasks.splice(id,1); } 
+                else { taskToMove = this.gantts[gci].tasks[id]; }
+              } else { 
+                if (i == arr.length - 1) { taskToMove = taskToMove.subtasks.splice(id,1); } 
+                else { taskToMove = taskToMove.subtasks[id]; }
+              }
+            });
+            taskToMove = taskToMove[0];
+            console.log(taskToMove);
+            let movel = taskIdToMove.length;
+            let prepl = taskIdToPrepend.length;
+            console.log(movel, prepl);
+            if (movel == prepl) {
+              if (movel == 1) {
+                if (taskIdToMove[0] > taskIdToPrepend[0]) { this.gantts[gci].tasks.splice(taskIdToPrepend[0], 0, taskToMove); }
+                else { this.gantts[gci].tasks.splice(taskIdToPrepend[0]-1, 0, taskToMove); }
+              } else if (taskIdToMove.slice(0,-2) == taskIdToPrepend.slice(0,-2)) {
+                if (taskIdToMove[movel - 1] > taskIdToPrepend[prepl - 1]) {}
+                else {}
+              } else {}
+            } else if (movel < prepl) {
+            //   if (taskIdToPrepend[movel - 1] > taskIdToMove[movel - 1]) {}
+            //   else if (taskIdToPrepend[movel - 1] < taskIdToMove[movel - 1]) {}
+            //   else {}
+            } else {
+
+            }
           }
         }
       });
