@@ -3,6 +3,12 @@
   <head>
     <meta charset="utf-8">
     <title>Project Gantt</title>
+    <meta property="og:url" content="https://ricwtk.github.io/ProjectGantt">
+    <meta property="og:title" content="Project Gantt">
+    <meta property="og:description" content="Gantt chart editor">
+    <meta name="description" content="Gantt chart editor">
+    <meta name="keywords" content="Project Gantt, Gantt chart, editor">
+    <link rel="icon" type="image/png" href="icons/icon.png?v=1.0">
     <link href="//fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
     <link href="//cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
     <link href="//cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
@@ -139,6 +145,7 @@
             <gantt-chart v-for="gc,i in gantts" :ref="'gc' + i" :key="i" :id="'gc' + i"
               :is-app-authorized="currentFile.isAppAuthorized"
               v-model="gantts[i]"
+              @reorder-task="reorderTask($event,i)"
             ></gantt-chart>
 
             <v-row no-gutters v-if="currentFile.isAppAuthorized">
@@ -230,9 +237,7 @@
               </v-col>
               <v-col cols="0">
                 <v-row no-gutters style="border: 1px solid #ddd; border-left: 0px; background-color: white" :style="{ height: (40 * (settings.dateDisplay.length + 1)) + 'px' }" justify="center" align="center">
-                  <v-col cols="auto" class="text-no-wrap text-truncate">
-                    Task
-                  </v-col>
+                  <v-col cols="auto" class="text-no-wrap text-truncate">Task</v-col>
                 </v-row>
                 <v-row no-gutters>
                   <v-col cols="0" :style="{ height: (settings.rowHeight * taskToDisplay.length) + 'px' }" class="d-flex flex-column">
@@ -242,6 +247,8 @@
                       :value="getTaskFromId(taskId)"
                       @input="setTaskFromId(taskId,$event)"
                       @remove="removeTaskWithId(taskId)"
+                      @dragstart="startDragTask($event,taskId)"
+                      @drop="dropTask($event,taskId)"
                     >
                     </task-title>
                   </v-col>
@@ -455,10 +462,10 @@
     </template>
 
     <template id="task-title">
-      <v-row no-gutters justify="start" align="center" @click="openDetails" style="cursor: pointer">
+      <v-row no-gutters justify="start" align="center" @click="openDetails" style="cursor: pointer" draggable :class="additionalClass">
         <v-col>
           <v-row no-gutters align="center">
-            <!-- <!-- <v-col cols="auto"><v-btn icon small v-if="editMode" @click.stop=""><v-icon>mdi-cursor-move</v-icon></v-btn></v-col> -->
+            <v-col cols="auto" v-if="editMode" class="pl-1"><v-icon>mdi-cursor-move</v-icon></v-col>
             <v-col cols="0" class="pl-1 pr-1 text-no-wrap text-truncate" :title="value.description">
               <slot v-bind:value="value"><v-icon v-if="value.subtasks.length>0" @click.stop="value.collapsed = !value.collapsed">{{ value.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}</v-icon>{{ value.name }}</slot>
             </v-col>
@@ -556,7 +563,7 @@
     </template>
 
     <template id="task-description-list">
-      <v-expansion-panels accordion multiple v-model="expandedList">
+      <v-expansion-panels accordion multiple>
         <task-description v-for="t,i in taskList" :key="i" :task="t" :task-number="i+1"></task-description>
       </v-expansion-panels>
     </template>
@@ -574,7 +581,6 @@
           <v-row no-gutters><v-col>{{ task.description }}</v-col></v-row>
           <v-row no-gutters v-if="task.subtasks" class="pt-3"><v-col><task-description-list :task-list="task.subtasks"></task-description-list></v-col></v-row>
         </v-expansion-panel-content>
-
       </v-expansion-panel>
     </template>
 
@@ -765,7 +771,8 @@
               dateDisplay: [0,1,2],
               editMode: true && this.isAppAuthorized
             },
-            tasks: []
+            tasks: [],
+            reorderDialog: false
           }
         },
         methods: {
@@ -890,6 +897,12 @@
               dateDisplay: this.settings.dateDisplay,
               tasks: this.tasks
             });
+          },
+          startDragTask: function (ev, taskId) { ev.dataTransfer.setData('taskId', JSON.stringify(taskId)); },
+          dropTask: function (ev, taskId) { 
+            let droppedId = ev.dataTransfer.getData('taskId');
+            let thisId = JSON.stringify(taskId);
+            if (droppedId != thisId) { this.$emit('reorder-task', [droppedId, thisId]); }
           }
         }
       });
@@ -1038,18 +1051,29 @@
 
       Vue.component('task-title', {
         template: '#task-title',
-        props: ['value', 'cssstyle', 'editMode'],
+        props: ['value', 'editMode'],
+        mounted: function () {
+          this.$el.addEventListener("drag", (ev) => { this.$emit('drag', ev); });
+          this.$el.addEventListener("dragstart", (ev) => { this.$emit('dragstart', ev); });
+          this.$el.addEventListener("dragend", (ev) => { this.$emit('dragend', ev); });
+          this.$el.addEventListener("dragover", (ev) => { ev.preventDefault(); this.dragover = true; this.$emit('dragover', ev); });
+          this.$el.addEventListener("dragenter", (ev) => { this.$emit('dragenter', ev); });
+          this.$el.addEventListener("dragleave", (ev) => { this.dragover = false; this.$emit('dragleave', ev); });
+          this.$el.addEventListener("drop", (ev) => { ev.preventDefault(); this.dragover = false; this.$emit('drop', ev); });
+        },
         data: function () {
           return {
             details: {},
             isOpened: false,
             plannedMenu: false,
-            actualMenu: false
+            actualMenu: false,
+            dragover: false
           };
         },
         computed: {
           plannedText: function () { return this.details.planned[0] + ' ~ ' + this.details.planned[1]; },
-          actualText: function () { return this.details.actual[0] + ' ~ ' + this.details.actual[1]; }
+          actualText: function () { return this.details.actual[0] + ' ~ ' + this.details.actual[1]; },
+          additionalClass: function () { return this.dragover ? ['teal', 'lighten-5'] : [] }
         },
         methods: {
           openDetails: function () { 
@@ -1558,10 +1582,15 @@
           },
           updateHash: function (i) {
             location.hash = "gc" + i;
+          },
+          reorderTask: function (ev, gci) {
+            console.log(gci, ev);
+            
           }
         }
       });
 
+      
     </script>
 
     <!-- Google API -->
