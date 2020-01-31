@@ -467,7 +467,7 @@
     <template id="task-title">
       <v-row no-gutters justify="start" align="center" @click="openDetails" style="cursor: pointer" draggable :class="additionalClass">
         <v-col>
-          <v-row no-gutters align="center">
+          <v-row no-gutters align="center" class="flex-nowrap">
             <v-col cols="auto" v-if="editMode" class="pl-1"><v-icon>mdi-cursor-move</v-icon></v-col>
             <v-col cols="0" class="pl-1 pr-1 text-no-wrap text-truncate" :title="value.description">
               <slot v-bind:value="value"><v-icon v-if="value.subtasks.length>0" @click.stop="value.collapsed = !value.collapsed">{{ value.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}</v-icon>{{ value.name }}</slot>
@@ -557,6 +557,7 @@
                 <v-btn depressed tile block @click="addNewSubtask"><v-icon>mdi-plus</v-icon></v-btn>
               </v-card-text>
               <v-card-actions>
+                <v-btn text @click="isOpened = !isOpened; $emit('remove')">Delete</v-btn>
                 <v-spacer></v-spacer>
                 <v-btn text @click="isOpened = !isOpened; confirmChanges();">Ok</v-btn>
                 <v-btn text @click="isOpened = !isOpened">Cancel</v-btn>
