@@ -582,7 +582,7 @@
             <v-col>{{ task.name }}</v-col>
           </v-row>
         </v-expansion-panel-header>
-        <v-expansion-panel-content>
+        <v-expansion-panel-content v-if="task.subtasks.length > 0 || task.description !== ''">
           <v-row no-gutters><v-col>{{ task.description }}</v-col></v-row>
           <v-row no-gutters v-if="task.subtasks" class="pt-3"><v-col><task-description-list :task-list="task.subtasks"></task-description-list></v-col></v-row>
         </v-expansion-panel-content>
