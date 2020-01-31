@@ -143,10 +143,11 @@
               </v-col>
             </v-row>
             
-            <gantt-chart v-for="gc,i in gantts" :ref="'gc' + i" :key="i" :id="'gc' + i"
+            <gantt-chart v-for="gc,i in gantts" ref="gc" :key="i" :id="'gc' + i"
               :is-app-authorized="currentFile.isAppAuthorized"
               v-model="gantts[i]"
               @reorder-task="reorderTask($event,i)"
+              @remove="removeGantt(i)"
             ></gantt-chart>
 
             <v-row no-gutters v-if="currentFile.isAppAuthorized">
@@ -214,7 +215,7 @@
               <v-col><v-btn icon title="increase column width" @click="increaseColWidth"><v-icon>mdi-arrow-expand-horizontal</v-icon></v-btn></v-col>
             </v-row>
           </v-col>
-          <v-col cols="auto" v-if="isAppAuthorized"><gantt-settings v-model="settings" @input="emitInput"></gantt-settings></v-col>
+          <v-col cols="auto" v-if="isAppAuthorized"><gantt-settings v-model="settings" @input="emitInput" @remove="$emit('remove')"></gantt-settings></v-col>
         </v-row>
 
         <v-row no-gutters>
@@ -384,6 +385,7 @@
               </v-row>
             </v-card-text>
             <v-card-actions>
+              <v-btn text @click="isOpened = !isOpened; $emit('remove');">Delete</v-btn>
               <v-spacer></v-spacer>
               <v-btn text @click="isOpened = !isOpened; confirmSettings();">Ok</v-btn>
               <v-btn text @click="isOpened = !isOpened">Cancel</v-btn>
@@ -687,16 +689,7 @@
       Vue.component('gantt-chart', {
         template: '#gantt-chart',
         props: ['value', 'isAppAuthorized'],
-        mounted: function () {
-          this.settings.ganttChartName = this.value.ganttChartName;
-          this.settings.numberOfClass = this.value.numberOfClass;
-          this.settings.selectedScheme = this.value.selectedScheme;
-          this.settings.customScheme = this.value.customScheme;
-          this.settings.rowHeight = this.value.rowHeight;
-          this.settings.columnWidth = this.value.columnWidth;
-          this.settings.dateDisplay = this.value.dateDisplay;
-          this.tasks = this.value.tasks;
-        },
+        mounted: function () { this.initiate(); },
         watch: {
           isAppAuthorized: function (newVal) {
             if (newVal) { this.settings.editMode = true; }
@@ -782,6 +775,16 @@
           }
         },
         methods: {
+          initiate: function () {
+            this.settings.ganttChartName = this.value.ganttChartName;
+            this.settings.numberOfClass = this.value.numberOfClass;
+            this.settings.selectedScheme = this.value.selectedScheme;
+            this.settings.customScheme = this.value.customScheme;
+            this.settings.rowHeight = this.value.rowHeight;
+            this.settings.columnWidth = this.value.columnWidth;
+            this.settings.dateDisplay = this.value.dateDisplay;
+            this.tasks = this.value.tasks;
+          },
           addNewTask: function () {
             this.tasks.push({
               name: 'Task ' + (this.tasks.length + 1),
@@ -1603,10 +1606,9 @@
             location.hash = "gc" + i;
           },
           reorderTask: function (taskIds, gci) {
-            console.log(gci, taskIds);
             let taskIdToMove = JSON.parse(taskIds[0]);
             let taskIdToPrepend = JSON.parse(taskIds[1]);
-            console.log(taskIdToMove, taskIdToPrepend);
+            console.log(gci, taskIdToMove, taskIdToPrepend);
             let taskToMove;
             taskIdToMove.forEach((id,i,arr) => {
               if (i == 0) { 
@@ -1634,7 +1636,6 @@
 
             let movel = taskIdToMove.length;
             let prepl = taskIdToPrepend.length;
-            console.log(movel, prepl);
             if (movel == prepl) {
               let parentOfTaskToPrepend = getParentOfTaskToPrepend(taskIdToPrepend.slice(0,-1));
               if (JSON.stringify(taskIdToMove.slice(0,-1)) == JSON.stringify(taskIdToPrepend.slice(0,-1))) {
@@ -1659,6 +1660,12 @@
               let parentOfTaskToPrepend = getParentOfTaskToPrepend(taskIdToPrepend.slice(0,-1));
               parentOfTaskToPrepend.splice(taskIdToPrepend[prepl - 1], 0, taskToMove); 
             }
+          },
+          removeGantt: function (gci) {
+            this.gantts.splice(gci, 1);
+            this.$nextTick(() => {
+              this.$refs.gc.forEach(g => g.initiate());
+            });
           },
           openSite: function (site) {
             window.open(site, "_blank");
