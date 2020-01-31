@@ -219,7 +219,7 @@
 
         <v-row no-gutters>
           <v-col cols="3">
-            <v-row no-gutters>
+            <v-row no-gutters class="flex-nowrap">
               <v-col cols="auto">
                 <v-row no-gutters style="border: 1px solid #ddd; background-color: white" :style="{ height: (40 * (settings.dateDisplay.length + 1)) + 'px' }" justify="center" align="center">
                   <v-col cols="auto" class="pa-2 text-no-wrap text-truncate">
@@ -255,6 +255,8 @@
                   </v-col>
                 </v-row>
               </v-col>
+            </v-row>
+            <v-row no-gutters>
               <v-btn v-if="settings.editMode" depressed tile block 
                 height="40px" 
                 style="border: 1px solid #ddd; border-top: 0px; background-color: white"
