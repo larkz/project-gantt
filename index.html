@@ -195,7 +195,7 @@
 
         <v-footer>
           <v-col class="text-center" cols=12>
-            Powered by Vue and Vuetify, created by R.ich.ard
+            Powered by <span style="cursor:pointer" @click="openSite('//vuejs.org/')">Vue</span> and <span style="cursor:pointer" @click="openSite('//vuetifyjs.com/')">Vuetify</span>, created by <span style="cursor:pointer" @click="openSite('//ricwtk.github.io')">R.ich.ard</span
           </v-col>
         </v-footer>
       </v-app>
@@ -1656,7 +1656,10 @@
               let parentOfTaskToPrepend = getParentOfTaskToPrepend(taskIdToPrepend.slice(0,-1));
               parentOfTaskToPrepend.splice(taskIdToPrepend[prepl - 1], 0, taskToMove); 
             }
-          }
+          },
+          openSite: function (site) {
+            window.open(site, "_blank");
+          },
         }
       });
 
